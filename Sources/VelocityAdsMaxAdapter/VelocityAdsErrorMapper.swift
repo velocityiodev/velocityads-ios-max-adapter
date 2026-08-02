@@ -63,7 +63,7 @@ enum VelocityAdsErrorMapper {
             return MAAdapterError(code: MAAdapterError.invalidLoadState.code,
                                   errorString: error.message)
         case VelocityAdsErrorCode.waterfallLoadFailed:
-            return MAAdapterError(code: MAAdapterError.unspecified.code,
+            return MAAdapterError(code: MAAdapterError.internalError.code,
                                   errorString: error.message)
         case VelocityAdsErrorCode.adDestroyed:
             return MAAdapterError(code: MAAdapterError.invalidLoadState.code,

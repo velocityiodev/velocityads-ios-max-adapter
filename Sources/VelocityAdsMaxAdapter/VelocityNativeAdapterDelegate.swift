@@ -29,12 +29,21 @@ final class VelocityNativeAdapterDelegate: NSObject, VelocityNativeAdDelegate {
             iconImage = MANativeAdImage(url: iconURL)
         }
 
+        // Prefer the square variant (works in both portrait and landscape MAX templates);
+        // fall back to the landscape hero if only that is available.
+        var mainImage: MANativeAdImage?
+        if let rawUrl = data.squareImageUrl ?? data.largeImageUrl,
+           let mainURL = URL(string: rawUrl) {
+            mainImage = MANativeAdImage(url: mainURL)
+        }
+
         let maxNativeAd = VelocityMaxNativeAd(velocityNativeAd: nativeAd) { builder in
-            builder.title      = data.title
-            builder.body       = data.description
+            builder.title        = data.title
+            builder.body         = data.description
             builder.callToAction = data.callToAction
-            builder.advertiser = data.advertiserName
-            builder.icon       = iconImage
+            builder.advertiser   = data.advertiserName
+            builder.icon         = iconImage
+            builder.mainImage    = mainImage
         }
 
         maxDelegate?.didLoadNativeAd(maxNativeAd, withExtraInfo: nil)

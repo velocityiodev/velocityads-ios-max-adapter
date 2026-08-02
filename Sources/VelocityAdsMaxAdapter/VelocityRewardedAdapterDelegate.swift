@@ -7,8 +7,8 @@ import VelocityAdsSDK
 /// `@MainActor`), so no additional dispatching is required before forwarding to MAX.
 ///
 /// Velocity does not supply reward metadata (amount / currency), so the adapter
-/// reports `MAReward.defaultAmount` with an empty currency string — a common
-/// convention for networks that track reward completion server-side.
+/// reports `MAReward.defaultAmount` / `MAReward.defaultCurrency` — the canonical
+/// MAX convention for networks that track reward completion server-side.
 @MainActor
 final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegate {
 
@@ -50,7 +50,7 @@ final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegat
 
     /// Fires before `onAdDismissed` per the Velocity callback contract.
     func onUserRewarded(ad: any VelocityFullscreenAd) {
-        let reward = MAReward(amount: MAReward.defaultAmount, currency: "")
+        let reward = MAReward(amount: MAReward.defaultAmount, currency: MAReward.defaultCurrency)
         maxDelegate?.didRewardUser(with: reward)
     }
 

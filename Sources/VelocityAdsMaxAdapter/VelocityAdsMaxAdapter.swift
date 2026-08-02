@@ -11,6 +11,7 @@ import VelocityAdsSDK
 /// the placement's **App ID / Placement ID** field.
 ///
 /// Supported ad formats: Interstitial, Rewarded, Native.
+@objc(VelocityAdsMaxAdapter)
 public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                                            MAInterstitialAdapter,
                                            MARewardedAdapter,
@@ -35,6 +36,9 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
     /// Held strongly so the delegate is alive for the duration of async SDK initialisation.
     private var pendingInitDelegate: VelocityAdsInitBridge?
+
+    /// Set to `true` in `destroy()` so any queued async blocks can bail out early.
+    private var isDestroyed = false
 
     // MARK: - ALMediationAdapter overrides
 
@@ -72,9 +76,9 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         // is a @MainActor protocol. The bridge is created inside the block so its
         // @MainActor initialiser runs on the correct actor.
         DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            let bridge = VelocityAdsInitBridge { status, message in
-                self.pendingInitDelegate = nil
+            guard let self, !self.isDestroyed else { return }
+            let bridge = VelocityAdsInitBridge { [weak self] status, message in
+                self?.pendingInitDelegate = nil
                 completionHandler(status, message)
             }
             self.pendingInitDelegate = bridge
@@ -83,6 +87,8 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     public override func destroy() {
+        isDestroyed = true
+
         // Release the init bridge first so any in-flight SDK initialisation
         // no longer delivers its completion callback to a destroyed adapter.
         pendingInitDelegate = nil
@@ -146,11 +152,10 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         // MAInterstitialAdapterDelegate instance.
         interstitialAdDelegate?.maxDelegate = delegate
 
-        // MAX guarantees showInterstitialAd is called on the main thread.
-        // show() is @MainActor; dispatch synchronously to avoid a TOCTOU window.
-        DispatchQueue.main.async {
-            ad.show()
-        }
+        // MAX guarantees showInterstitialAd is called on the main thread and show()
+        // is @MainActor — call directly with no async hop to avoid a TOCTOU window
+        // where destroy() could run before the queued block executes.
+        ad.show()
     }
 
     // MARK: - MARewardedAdapter
@@ -199,11 +204,10 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         // MARewardedAdapterDelegate instance.
         rewardedAdDelegate?.maxDelegate = delegate
 
-        // MAX guarantees showRewardedAd is called on the main thread.
-        // show() is @MainActor; dispatch synchronously to avoid a TOCTOU window.
-        DispatchQueue.main.async {
-            ad.show()
-        }
+        // MAX guarantees showRewardedAd is called on the main thread and show()
+        // is @MainActor — call directly with no async hop to avoid a TOCTOU window
+        // where destroy() could run before the queued block executes.
+        ad.show()
     }
 
     // MARK: - MANativeAdAdapter
