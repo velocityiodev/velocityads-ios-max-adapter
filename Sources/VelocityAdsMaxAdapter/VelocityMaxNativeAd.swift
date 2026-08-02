@@ -31,6 +31,9 @@ final class VelocityMaxNativeAd: MANativeAd {
     @MainActor
     override func prepare(forInteractionClickableViews clickableViews: [UIView],
                           withContainer container: UIView) -> Bool {
+        // registerViewForInteraction is a no-op after destroy() — the SDK guarantees
+        // this per its public contract. We always return true because MAX uses this
+        // flag to decide whether to proceed with impression tracking.
         velocityNativeAd.registerViewForInteraction(adView: container,
                                                     clickableViews: clickableViews)
         return true

@@ -36,8 +36,8 @@ final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegat
     }
 
     func onAdImpression(ad: any VelocityFullscreenAd) {
-        // Impression tracking is already signalled through onAdShown for MAX;
-        // nothing extra to forward here.
+        // MAX receives the impression signal via onAdShown → didDisplayRewardedAd().
+        // No additional MAX callback is required here.
     }
 
     func onAdFailedToShow(ad: any VelocityFullscreenAd, error: VelocityAdsError) {

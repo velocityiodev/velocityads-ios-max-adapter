@@ -36,9 +36,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     /// Held strongly so the delegate is alive for the duration of async SDK initialisation.
     private var pendingInitDelegate: VelocityAdsInitBridge?
 
-    /// Guards against concurrent `initSDK` calls across multiple adapter instances.
-    private static let initLock = NSLock()
-
     // MARK: - ALMediationAdapter overrides
 
     public override var sdkVersion: String {
@@ -46,7 +43,7 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     public override var adapterVersion: String {
-        "0.9.0.0"
+        "0.10.0.0"
     }
 
     public override func initialize(
@@ -69,25 +66,18 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
             return
         }
 
-        // Prevent duplicate concurrent initialisation; report in-progress if another
-        // adapter instance is already holding the lock.
-        guard Self.initLock.try() else {
-            completionHandler(.initializing, nil)
-            return
-        }
-
         let request = VelocityAdsInitRequest.Builder(appKey).build()
 
-        let bridge = VelocityAdsInitBridge { [weak self] status, message in
-            Self.initLock.unlock()
-            self?.pendingInitDelegate = nil
-            completionHandler(status, message)
-        }
-        pendingInitDelegate = bridge
-
         // initSDK must be called on the main thread because VelocityAdsInitDelegate
-        // is a @MainActor protocol.
-        DispatchQueue.main.async {
+        // is a @MainActor protocol. The bridge is created inside the block so its
+        // @MainActor initialiser runs on the correct actor.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let bridge = VelocityAdsInitBridge { status, message in
+                self.pendingInitDelegate = nil
+                completionHandler(status, message)
+            }
+            self.pendingInitDelegate = bridge
             VelocityAds.initSDK(request, delegate: bridge)
         }
     }
@@ -117,6 +107,15 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         andNotify delegate: MAInterstitialAdapterDelegate
     ) {
         let adUnitId = parameters.thirdPartyAdPlacementIdentifier
+        guard !adUnitId.isEmpty else {
+            delegate.didFailToLoadInterstitialAd(withError:
+                MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
+                               errorString: "Velocity Ads: empty ad unit ID"))
+            return
+        }
+
+        interstitialAd?.destroy()
+        interstitialAd = nil
 
         let adDelegate = VelocityInterstitialAdapterDelegate()
         adDelegate.maxDelegate = delegate
@@ -147,7 +146,9 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         // MAInterstitialAdapterDelegate instance.
         interstitialAdDelegate?.maxDelegate = delegate
 
-        Task { @MainActor in
+        // MAX guarantees showInterstitialAd is called on the main thread.
+        // show() is @MainActor; dispatch synchronously to avoid a TOCTOU window.
+        DispatchQueue.main.async {
             ad.show()
         }
     }
@@ -159,6 +160,15 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         andNotify delegate: MARewardedAdapterDelegate
     ) {
         let adUnitId = parameters.thirdPartyAdPlacementIdentifier
+        guard !adUnitId.isEmpty else {
+            delegate.didFailToLoadRewardedAd(withError:
+                MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
+                               errorString: "Velocity Ads: empty ad unit ID"))
+            return
+        }
+
+        rewardedAd?.destroy()
+        rewardedAd = nil
 
         let adDelegate = VelocityRewardedAdapterDelegate()
         adDelegate.maxDelegate = delegate
@@ -189,7 +199,9 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         // MARewardedAdapterDelegate instance.
         rewardedAdDelegate?.maxDelegate = delegate
 
-        Task { @MainActor in
+        // MAX guarantees showRewardedAd is called on the main thread.
+        // show() is @MainActor; dispatch synchronously to avoid a TOCTOU window.
+        DispatchQueue.main.async {
             ad.show()
         }
     }
@@ -201,6 +213,15 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         andNotify delegate: MANativeAdAdapterDelegate
     ) {
         let adUnitId = parameters.thirdPartyAdPlacementIdentifier
+        guard !adUnitId.isEmpty else {
+            delegate.didFailToLoadNativeAd(withError:
+                MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
+                               errorString: "Velocity Ads: empty ad unit ID"))
+            return
+        }
+
+        nativeAd?.destroy()
+        nativeAd = nil
 
         let adDelegate = VelocityNativeAdapterDelegate()
         adDelegate.maxDelegate = delegate
