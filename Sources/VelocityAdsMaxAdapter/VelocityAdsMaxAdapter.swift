@@ -123,7 +123,11 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         rewardedAd = nil
         rewardedAdDelegate = nil
 
-        nativeAd?.destroy()
+        // VelocityNativeAd.destroy() is @MainActor; MAX guarantees destroy() is
+        // called on the main thread so assumeIsolated is safe here.
+        MainActor.assumeIsolated {
+            nativeAd?.destroy()
+        }
         nativeAd = nil
         nativeAdDelegate = nil
     }
@@ -136,20 +140,23 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     ) {
         let adUnitId = parameters.thirdPartyAdPlacementIdentifier
         guard !adUnitId.isEmpty else {
-            delegate.didFailToLoadInterstitialAd(withError:
-                MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
-                               errorString: "Velocity Ads: empty ad unit ID"))
+            delegate.didFailToLoadInterstitialAdWithError(MAAdapterError.invalidConfiguration)
             return
         }
 
         interstitialAd?.destroy()
         interstitialAd = nil
 
-        let adDelegate = VelocityInterstitialAdapterDelegate()
-        adDelegate.maxDelegate = delegate
-        adDelegate.onDismissed = { [weak self] in
-            self?.interstitialAd = nil
-            self?.interstitialAdDelegate = nil
+        // VelocityInterstitialAdapterDelegate is @MainActor; MAX guarantees load is
+        // called on the main thread so assumeIsolated is safe here.
+        let adDelegate = MainActor.assumeIsolated {
+            let d = VelocityInterstitialAdapterDelegate()
+            d.maxDelegate = delegate
+            d.onDismissed = { [weak self] in
+                self?.interstitialAd = nil
+                self?.interstitialAdDelegate = nil
+            }
+            return d
         }
 
         let request = VelocityInterstitialAdRequest.Builder(adUnitId: adUnitId).build()
@@ -162,22 +169,21 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     public func showInterstitialAd(
-        for parameters: MAAdapterShownAdParameters,
+        for parameters: MAAdapterResponseParameters,
         andNotify delegate: MAInterstitialAdapterDelegate
     ) {
         guard let ad = interstitialAd, ad.isReady else {
-            delegate.didFailToDisplayInterstitialAd(withError: .adNotReady)
+            delegate.didFailToDisplayInterstitialAdWithError(MAAdapterError.adNotReady)
             return
         }
 
         // Refresh the delegate pointer so display-phase events reach the correct
-        // MAInterstitialAdapterDelegate instance.
-        interstitialAdDelegate?.maxDelegate = delegate
-
-        // MAX guarantees showInterstitialAd is called on the main thread and show()
-        // is @MainActor — call directly with no async hop to avoid a TOCTOU window
-        // where destroy() could run before the queued block executes.
-        ad.show()
+        // MAInterstitialAdapterDelegate instance, then show.
+        // MAX guarantees showInterstitialAd is called on the main thread.
+        MainActor.assumeIsolated {
+            interstitialAdDelegate?.maxDelegate = delegate
+            ad.show()
+        }
     }
 
     // MARK: - MARewardedAdapter
@@ -188,20 +194,23 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     ) {
         let adUnitId = parameters.thirdPartyAdPlacementIdentifier
         guard !adUnitId.isEmpty else {
-            delegate.didFailToLoadRewardedAd(withError:
-                MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
-                               errorString: "Velocity Ads: empty ad unit ID"))
+            delegate.didFailToLoadRewardedAdWithError(MAAdapterError.invalidConfiguration)
             return
         }
 
         rewardedAd?.destroy()
         rewardedAd = nil
 
-        let adDelegate = VelocityRewardedAdapterDelegate()
-        adDelegate.maxDelegate = delegate
-        adDelegate.onDismissed = { [weak self] in
-            self?.rewardedAd = nil
-            self?.rewardedAdDelegate = nil
+        // VelocityRewardedAdapterDelegate is @MainActor; MAX guarantees load is
+        // called on the main thread so assumeIsolated is safe here.
+        let adDelegate = MainActor.assumeIsolated {
+            let d = VelocityRewardedAdapterDelegate()
+            d.maxDelegate = delegate
+            d.onDismissed = { [weak self] in
+                self?.rewardedAd = nil
+                self?.rewardedAdDelegate = nil
+            }
+            return d
         }
 
         let request = VelocityRewardedAdRequest.Builder(adUnitId: adUnitId).build()
@@ -214,22 +223,21 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     public func showRewardedAd(
-        for parameters: MAAdapterShownAdParameters,
+        for parameters: MAAdapterResponseParameters,
         andNotify delegate: MARewardedAdapterDelegate
     ) {
         guard let ad = rewardedAd, ad.isReady else {
-            delegate.didFailToDisplayRewardedAd(withError: .adNotReady)
+            delegate.didFailToDisplayRewardedAdWithError(MAAdapterError.adNotReady)
             return
         }
 
         // Refresh the delegate pointer so display-phase events reach the correct
-        // MARewardedAdapterDelegate instance.
-        rewardedAdDelegate?.maxDelegate = delegate
-
-        // MAX guarantees showRewardedAd is called on the main thread and show()
-        // is @MainActor — call directly with no async hop to avoid a TOCTOU window
-        // where destroy() could run before the queued block executes.
-        ad.show()
+        // MARewardedAdapterDelegate instance, then show.
+        // MAX guarantees showRewardedAd is called on the main thread.
+        MainActor.assumeIsolated {
+            rewardedAdDelegate?.maxDelegate = delegate
+            ad.show()
+        }
     }
 
     // MARK: - MANativeAdAdapter
@@ -240,17 +248,20 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     ) {
         let adUnitId = parameters.thirdPartyAdPlacementIdentifier
         guard !adUnitId.isEmpty else {
-            delegate.didFailToLoadNativeAd(withError:
-                MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
-                               errorString: "Velocity Ads: empty ad unit ID"))
+            delegate.didFailToLoadNativeAdWithError(MAAdapterError.invalidConfiguration)
             return
         }
 
-        nativeAd?.destroy()
-        nativeAd = nil
+        // VelocityNativeAd.destroy() and VelocityNativeAdapterDelegate are @MainActor;
+        // MAX guarantees load is called on the main thread so assumeIsolated is safe.
+        let adDelegate = MainActor.assumeIsolated {
+            nativeAd?.destroy()
+            nativeAd = nil
 
-        let adDelegate = VelocityNativeAdapterDelegate()
-        adDelegate.maxDelegate = delegate
+            let d = VelocityNativeAdapterDelegate()
+            d.maxDelegate = delegate
+            return d
+        }
 
         let request = VelocityNativeAdRequest.Builder(adUnitId: adUnitId).build()
         let ad = VelocityNativeAd(request)
@@ -264,10 +275,10 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     // MARK: - Privacy helpers
 
     private func forwardPrivacySettings(from parameters: MAAdapterInitializationParameters) {
-        if let consent = parameters.hasUserConsent {
+        if let consent = parameters.userConsent {
             VelocityAds.setConsent(consent.boolValue)
         }
-        if let doNotSell = parameters.isDoNotSell {
+        if let doNotSell = parameters.doNotSell {
             VelocityAds.setDoNotSell(doNotSell.boolValue)
         }
     }

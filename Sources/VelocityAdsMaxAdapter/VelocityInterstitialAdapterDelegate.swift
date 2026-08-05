@@ -24,7 +24,7 @@ final class VelocityInterstitialAdapterDelegate: NSObject, VelocityInterstitialA
     }
 
     func onAdFailedToLoad(ad: any VelocityFullscreenAd, error: VelocityAdsError) {
-        maxDelegate?.didFailToLoadInterstitialAd(withError: VelocityAdsErrorMapper.map(error))
+        maxDelegate?.didFailToLoadInterstitialAdWithError(VelocityAdsErrorMapper.map(error))
     }
 
     func onAdShown(ad: any VelocityFullscreenAd) {
@@ -37,7 +37,7 @@ final class VelocityInterstitialAdapterDelegate: NSObject, VelocityInterstitialA
     }
 
     func onAdFailedToShow(ad: any VelocityFullscreenAd, error: VelocityAdsError) {
-        maxDelegate?.didFailToDisplayInterstitialAd(withError: VelocityAdsErrorMapper.map(error))
+        maxDelegate?.didFailToDisplayInterstitialAdWithError(VelocityAdsErrorMapper.map(error))
     }
 
     func onAdClicked(ad: any VelocityFullscreenAd) {

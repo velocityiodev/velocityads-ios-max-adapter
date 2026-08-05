@@ -6,9 +6,9 @@ import VelocityAdsSDK
 /// The Velocity SDK delivers all callbacks on the main thread (the protocol is
 /// `@MainActor`), so no additional dispatching is required before forwarding to MAX.
 ///
-/// Velocity does not supply reward metadata (amount / currency), so the adapter
-/// reports `MAReward.defaultAmount` / `MAReward.defaultCurrency` — the canonical
-/// MAX convention for networks that track reward completion server-side.
+/// Velocity does not supply reward metadata, so the adapter reports
+/// `MAReward.defaultAmount` / `MAReward.defaultLabel` — the canonical MAX
+/// convention for networks that track reward completion server-side.
 @MainActor
 final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegate {
 
@@ -28,7 +28,7 @@ final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegat
     }
 
     func onAdFailedToLoad(ad: any VelocityFullscreenAd, error: VelocityAdsError) {
-        maxDelegate?.didFailToLoadRewardedAd(withError: VelocityAdsErrorMapper.map(error))
+        maxDelegate?.didFailToLoadRewardedAdWithError(VelocityAdsErrorMapper.map(error))
     }
 
     func onAdShown(ad: any VelocityFullscreenAd) {
@@ -41,7 +41,7 @@ final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegat
     }
 
     func onAdFailedToShow(ad: any VelocityFullscreenAd, error: VelocityAdsError) {
-        maxDelegate?.didFailToDisplayRewardedAd(withError: VelocityAdsErrorMapper.map(error))
+        maxDelegate?.didFailToDisplayRewardedAdWithError(VelocityAdsErrorMapper.map(error))
     }
 
     func onAdClicked(ad: any VelocityFullscreenAd) {
@@ -50,7 +50,7 @@ final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegat
 
     /// Fires before `onAdDismissed` per the Velocity callback contract.
     func onUserRewarded(ad: any VelocityFullscreenAd) {
-        let reward = MAReward(amount: MAReward.defaultAmount, currency: MAReward.defaultCurrency)
+        let reward = MAReward(amount: MAReward.defaultAmount, label: MAReward.defaultLabel)
         maxDelegate?.didRewardUser(with: reward)
     }
 

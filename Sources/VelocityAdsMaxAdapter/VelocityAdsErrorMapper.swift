@@ -11,73 +11,63 @@ enum VelocityAdsErrorMapper {
 
         // Network / HTTP layer
         case VelocityAdsErrorCode.invalidURL:
-            return MAAdapterError(code: MAAdapterError.badRequest.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.badRequest, message: error.message)
         case VelocityAdsErrorCode.networkError:
-            return MAAdapterError(code: MAAdapterError.noConnection.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.noConnection, message: error.message)
         case VelocityAdsErrorCode.jsonParseError:
-            return MAAdapterError(code: MAAdapterError.badRequest.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.badRequest, message: error.message)
         case VelocityAdsErrorCode.invalidResponse:
-            return MAAdapterError(code: MAAdapterError.badRequest.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.badRequest, message: error.message)
         case VelocityAdsErrorCode.emptyResponseBody:
-            return MAAdapterError(code: MAAdapterError.badRequest.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.badRequest, message: error.message)
         case VelocityAdsErrorCode.serverErrorField:
-            return MAAdapterError(code: MAAdapterError.serverError.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.serverError, message: error.message)
         case VelocityAdsErrorCode.httpFailure:
-            return MAAdapterError(code: MAAdapterError.serverError.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.serverError, message: error.message)
 
         // SDK init / configuration
         case VelocityAdsErrorCode.invalidAppKey:
-            return MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.invalidConfiguration, message: error.message)
         case VelocityAdsErrorCode.sdkNotInitialized:
-            return MAAdapterError(code: MAAdapterError.notInitialized.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.notInitialized, message: error.message)
         case VelocityAdsErrorCode.sdkInitializationInProgress:
-            return MAAdapterError(code: MAAdapterError.notInitialized.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.notInitialized, message: error.message)
 
         // Load lifecycle
         case VelocityAdsErrorCode.loadAlreadyInProgress:
-            return MAAdapterError(code: MAAdapterError.invalidLoadState.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.invalidLoadState, message: error.message)
         case VelocityAdsErrorCode.loadServiceUnavailable:
-            return MAAdapterError(code: MAAdapterError.notInitialized.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.notInitialized, message: error.message)
         case VelocityAdsErrorCode.invalidAdResponse:
-            return MAAdapterError(code: MAAdapterError.badRequest.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.badRequest, message: error.message)
         case VelocityAdsErrorCode.noFill:
-            return MAAdapterError(code: MAAdapterError.noFill.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.noFill, message: error.message)
         case VelocityAdsErrorCode.internalError:
-            return MAAdapterError(code: MAAdapterError.internalError.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.internalError, message: error.message)
         case VelocityAdsErrorCode.adAlreadyLoaded:
-            return MAAdapterError(code: MAAdapterError.invalidLoadState.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.invalidLoadState, message: error.message)
         case VelocityAdsErrorCode.waterfallLoadFailed:
-            return MAAdapterError(code: MAAdapterError.internalError.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.internalError, message: error.message)
         case VelocityAdsErrorCode.adDestroyed:
-            return MAAdapterError(code: MAAdapterError.invalidLoadState.code,
-                                  errorString: error.message)
-        case VelocityAdsErrorCode.adSpent:
-            return MAAdapterError(code: MAAdapterError.invalidLoadState.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.invalidLoadState, message: error.message)
         case VelocityAdsErrorCode.invalidAdUnitId:
-            return MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.invalidConfiguration, message: error.message)
+        case VelocityAdsErrorCode.adSpent:
+            return make(MAAdapterError.adExpiredError, message: error.message)
 
         default:
-            return MAAdapterError(code: MAAdapterError.unspecified.code,
-                                  errorString: error.message)
+            return make(MAAdapterError.unspecified, message: error.message)
         }
+    }
+
+    // MARK: - Private
+
+    /// Creates an `MAAdapterError` from a pre-built prototype's code, preserving the
+    /// Velocity error message for visibility in MAX logs.
+    ///
+    /// `MAAdapterError.xxx.code` returns `MAErrorCode` (an ObjC NS_ENUM). `.rawValue` extracts
+    /// the underlying `Int` required by `errorWithCode:errorString:`.
+    private static func make(_ prototype: MAAdapterError, message: String) -> MAAdapterError {
+        MAAdapterError(code: prototype.code.rawValue, errorString: message)
     }
 }

@@ -16,10 +16,7 @@ final class VelocityNativeAdapterDelegate: NSObject, VelocityNativeAdDelegate {
 
     func onAdLoaded(nativeAd: VelocityNativeAd) {
         guard let data = nativeAd.data else {
-            maxDelegate?.didFailToLoadNativeAd(withError:
-                MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
-                               errorString: "VelocityNativeAd loaded but NativeAd data was nil")
-            )
+            maxDelegate?.didFailToLoadNativeAdWithError(MAAdapterError.invalidConfiguration)
             return
         }
 
@@ -46,11 +43,11 @@ final class VelocityNativeAdapterDelegate: NSObject, VelocityNativeAdDelegate {
             builder.mainImage    = mainImage
         }
 
-        maxDelegate?.didLoadNativeAd(maxNativeAd, withExtraInfo: nil)
+        maxDelegate?.didLoadAd(for: maxNativeAd, withExtraInfo: nil)
     }
 
     func onAdFailedToLoad(nativeAd: VelocityNativeAd, error: VelocityAdsError) {
-        maxDelegate?.didFailToLoadNativeAd(withError: VelocityAdsErrorMapper.map(error))
+        maxDelegate?.didFailToLoadNativeAdWithError(VelocityAdsErrorMapper.map(error))
     }
 
     func onAdImpression(nativeAd: VelocityNativeAd) {
