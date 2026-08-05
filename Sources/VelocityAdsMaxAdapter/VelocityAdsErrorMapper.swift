@@ -68,6 +68,9 @@ enum VelocityAdsErrorMapper {
         case VelocityAdsErrorCode.adDestroyed:
             return MAAdapterError(code: MAAdapterError.invalidLoadState.code,
                                   errorString: error.message)
+        case VelocityAdsErrorCode.adSpent:
+            return MAAdapterError(code: MAAdapterError.invalidLoadState.code,
+                                  errorString: error.message)
         case VelocityAdsErrorCode.invalidAdUnitId:
             return MAAdapterError(code: MAAdapterError.invalidConfiguration.code,
                                   errorString: error.message)

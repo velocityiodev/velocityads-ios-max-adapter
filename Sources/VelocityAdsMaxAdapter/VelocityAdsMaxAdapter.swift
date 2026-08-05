@@ -38,6 +38,12 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     private var pendingInitDelegate: VelocityAdsInitBridge?
 
     /// Set to `true` in `destroy()` so any queued async blocks can bail out early.
+    ///
+    /// Thread-safety: AppLovin MAX guarantees that all adapter lifecycle methods
+    /// (`initialize`, `destroy`, `loadInterstitialAd`, etc.) are called from the
+    /// main thread. `isDestroyed` is written in `destroy()` and read inside a
+    /// `DispatchQueue.main.async` block — both happen on the main thread (serial),
+    /// so no additional synchronisation is required.
     private var isDestroyed = false
 
     // MARK: - ALMediationAdapter overrides
@@ -76,7 +82,23 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         // is a @MainActor protocol. The bridge is created inside the block so its
         // @MainActor initialiser runs on the correct actor.
         DispatchQueue.main.async { [weak self] in
-            guard let self, !self.isDestroyed else { return }
+            guard let self else {
+                // Adapter was released before the block ran. MAX no longer holds
+                // a reference to this adapter, so calling completionHandler would
+                // deliver a result to an already-orphaned context — signal failure
+                // so MAX can clean up the pending init on its side.
+                completionHandler(.initializedFailure,
+                                  "Velocity Ads adapter was released before initialization completed")
+                return
+            }
+            guard !self.isDestroyed else {
+                // destroy() was called before this block ran. Signal failure so
+                // MAX does not wait indefinitely for a completion that will never
+                // arrive via the SDK delegate path.
+                completionHandler(.initializedFailure,
+                                  "Velocity Ads adapter was destroyed before initialization completed")
+                return
+            }
             let bridge = VelocityAdsInitBridge { [weak self] status, message in
                 self?.pendingInitDelegate = nil
                 completionHandler(status, message)
