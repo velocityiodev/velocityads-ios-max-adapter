@@ -12,6 +12,12 @@ final class VelocityNativeAdapterDelegate: NSObject, VelocityNativeAdDelegate {
 
     weak var maxDelegate: MANativeAdAdapterDelegate?
 
+    /// The `VelocityMaxNativeAd` most recently delivered to MAX via `didLoadAd`.
+    /// Retained so the adapter can set `isAdDestroyed = true` before calling
+    /// `VelocityNativeAd.destroy()`, preventing MAX from treating the ad as
+    /// still tracked after destruction.
+    private(set) var currentMaxNativeAd: VelocityMaxNativeAd?
+
     // MARK: - VelocityNativeAdDelegate
 
     func onAdLoaded(nativeAd: VelocityNativeAd) {
@@ -42,6 +48,7 @@ final class VelocityNativeAdapterDelegate: NSObject, VelocityNativeAdDelegate {
             builder.icon         = iconImage
             builder.mainImage    = mainImage
         }
+        currentMaxNativeAd = maxNativeAd
 
         maxDelegate?.didLoadAd(for: maxNativeAd, withExtraInfo: nil)
     }

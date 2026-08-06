@@ -15,6 +15,12 @@ final class VelocityMaxNativeAd: MANativeAd {
 
     private let velocityNativeAd: VelocityNativeAd
 
+    /// Set to `true` by `VelocityAdsMaxAdapter.destroy()` (via the delegate) before
+    /// `VelocityNativeAd.destroy()` is called, so `prepare(forInteractionClickableViews:)`
+    /// can return `false` and prevent MAX from believing click/impression tracking is
+    /// active for a destroyed ad.
+    var isAdDestroyed = false
+
     // MARK: - Init
 
     /// - Parameters:
@@ -31,9 +37,7 @@ final class VelocityMaxNativeAd: MANativeAd {
     @MainActor
     override func prepare(forInteractionClickableViews clickableViews: [UIView],
                           withContainer container: UIView) -> Bool {
-        // registerViewForInteraction is a no-op after destroy() — the SDK guarantees
-        // this per its public contract. We always return true because MAX uses this
-        // flag to decide whether to proceed with impression tracking.
+        guard !isAdDestroyed else { return false }
         velocityNativeAd.registerViewForInteraction(adView: container,
                                                     clickableViews: clickableViews)
         return true

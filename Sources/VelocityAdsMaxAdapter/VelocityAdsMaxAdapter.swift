@@ -125,7 +125,10 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
         // VelocityNativeAd.destroy() is @MainActor; MAX guarantees destroy() is
         // called on the main thread so assumeIsolated is safe here.
+        // Mark the MANativeAd as destroyed first so prepare(forInteractionClickableViews:)
+        // returns false if MAX re-invokes it on the now-dead ad.
         MainActor.assumeIsolated {
+            nativeAdDelegate?.currentMaxNativeAd?.isAdDestroyed = true
             nativeAd?.destroy()
         }
         nativeAd = nil
