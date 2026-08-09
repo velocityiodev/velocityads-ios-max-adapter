@@ -53,8 +53,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     public override var adapterVersion: String {
-        // IMPORTANT: Keep this in sync with the version in VelocityAdsMaxAdapter.podspec.
-        // This string is reported to MAX dashboards and is critical for debugging.
         "0.10.0.0"
     }
 
@@ -292,8 +290,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         if let doNotSell = parameters.doNotSell {
             VelocityAds.setDoNotSell(doNotSell.boolValue)
         }
-        // Note: VelocityAdsSDK does not currently expose a COPPA/age-restriction API.
-        // When one is added, forward parameters.isAgeRestrictedUser here.
     }
 }
 
