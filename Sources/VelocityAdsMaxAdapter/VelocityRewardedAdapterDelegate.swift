@@ -32,12 +32,14 @@ final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegat
     }
 
     func onAdShown(ad: any VelocityFullscreenAd) {
-        // Surface is visible — impression not yet counted. MAX display signal fires
-        // in onAdImpression once the Velocity SDK has verified the impression.
+        // Surface is visible — signal MAX that the ad is displaying. MAX will then
+        // fire its own impression beacon; calling didDisplay here (show time) rather
+        // than in onAdImpression avoids a potential double-count.
+        maxDelegate?.didDisplayRewardedAd()
     }
 
     func onAdImpression(ad: any VelocityFullscreenAd) {
-        maxDelegate?.didDisplayRewardedAd()
+        // Velocity impression confirmed — no additional MAX signal needed here.
     }
 
     func onAdFailedToShow(ad: any VelocityFullscreenAd, error: VelocityAdsError) {

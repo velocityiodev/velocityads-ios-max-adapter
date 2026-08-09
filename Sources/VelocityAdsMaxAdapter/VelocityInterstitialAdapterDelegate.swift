@@ -28,12 +28,14 @@ final class VelocityInterstitialAdapterDelegate: NSObject, VelocityInterstitialA
     }
 
     func onAdShown(ad: any VelocityFullscreenAd) {
-        // Surface is visible — impression not yet counted. MAX display signal fires
-        // in onAdImpression once the Velocity SDK has verified the impression.
+        // Surface is visible — signal MAX that the ad is displaying. MAX will then
+        // fire its own impression beacon; calling didDisplay here (show time) rather
+        // than in onAdImpression avoids a potential double-count.
+        maxDelegate?.didDisplayInterstitialAd()
     }
 
     func onAdImpression(ad: any VelocityFullscreenAd) {
-        maxDelegate?.didDisplayInterstitialAd()
+        // Velocity impression confirmed — no additional MAX signal needed here.
     }
 
     func onAdFailedToShow(ad: any VelocityFullscreenAd, error: VelocityAdsError) {
