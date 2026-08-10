@@ -53,7 +53,7 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     public override var adapterVersion: String {
-        "0.10.0.0"
+        velocityAdsMaxAdapterVersion
     }
 
     public override func initialize(

@@ -22,7 +22,7 @@ final class VelocityNativeAdapterDelegate: NSObject, VelocityNativeAdDelegate {
 
     func onAdLoaded(nativeAd: VelocityNativeAd) {
         guard let data = nativeAd.data else {
-            maxDelegate?.didFailToLoadNativeAdWithError(MAAdapterError.invalidConfiguration)
+            maxDelegate?.didFailToLoadNativeAdWithError(MAAdapterError.internalError)
             return
         }
 
