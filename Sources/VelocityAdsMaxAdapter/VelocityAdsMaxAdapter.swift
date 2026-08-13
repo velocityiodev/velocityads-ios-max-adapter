@@ -46,6 +46,24 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     /// so no additional synchronisation is required.
     private var isDestroyed = false
 
+    // MARK: - Class-level init coalescing (main-thread-confined)
+
+    /// `true` while the first adapter instance that reached the main-thread dispatch
+    /// block is executing `VelocityAds.initSDK`. Reset to `false` when that call
+    /// completes (success or failure).
+    ///
+    /// Protected by main-thread serialisation — MAX guarantees all `initialize()`
+    /// calls arrive on the main thread, and the flag is only read/written inside
+    /// `DispatchQueue.main.async` blocks.
+    private static var initClaimed = false
+
+    /// Completion handlers from adapter instances that arrived while `initClaimed`
+    /// was already `true`. The winner broadcasts the init outcome to all of them
+    /// when `initSDK` completes, so no adapter ever calls the SDK redundantly.
+    ///
+    /// Protected by the same main-thread serialisation as `initClaimed`.
+    private static var pendingCompletions: [(MAAdapterInitializationStatus, String?) -> Void] = []
+
     // MARK: - ALMediationAdapter overrides
 
     public override var sdkVersion: String {
@@ -105,8 +123,23 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                 completionHandler(.initializedSuccess, nil)
                 return
             }
+            // Coalesce concurrent initialize() calls: only the first adapter instance
+            // that reaches this point calls initSDK; all others park their completion
+            // handler and wait for the winner to broadcast the result. This prevents
+            // the SDK from rejecting the second call with SDK_INITIALIZATION_IN_PROGRESS
+            // and MAX from treating that rejection as a permanent network failure.
+            if VelocityAdsMaxAdapter.initClaimed {
+                VelocityAdsMaxAdapter.pendingCompletions.append(completionHandler)
+                return
+            }
+            VelocityAdsMaxAdapter.initClaimed = true
             let bridge = VelocityAdsInitBridge { [weak self] status, message in
                 self?.pendingInitDelegate = nil
+                // Broadcast the outcome to all adapters that parked while waiting.
+                let waiting = VelocityAdsMaxAdapter.pendingCompletions
+                VelocityAdsMaxAdapter.pendingCompletions = []
+                VelocityAdsMaxAdapter.initClaimed = false
+                for handler in waiting { handler(status, message) }
                 completionHandler(status, message)
             }
             self.pendingInitDelegate = bridge
