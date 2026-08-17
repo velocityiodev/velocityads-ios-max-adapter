@@ -399,10 +399,37 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     @MainActor
     private func startClaimedInit(appKey: String) {
         let request = VelocityAdsInitRequest.Builder(appKey).build()
-        let bridge = VelocityAdsInitBridge { [weak self] status, message in
-            self?.pendingInitDelegate = nil
-            VelocityAdsMaxAdapter.initCoalescer.complete(with: (status, message))
-        }
+        let bridge = VelocityAdsInitBridge(
+            onSuccess: { [weak self] in
+                self?.pendingInitDelegate = nil
+                VelocityAdsMaxAdapter.initCoalescer.complete(with: (.initializedSuccess, nil))
+            },
+            onFailure: { [weak self] error in
+                self?.pendingInitDelegate = nil
+                if error.code == VelocityAdsErrorCode.sdkInitializationInProgress {
+                    // The host app called VelocityAds.initSDK moments before the
+                    // adapter did, so the SDK rejected our call. Not a permanent
+                    // failure — wait for the in-flight init and report the real
+                    // outcome. The claim stays held during polling so concurrent
+                    // callers keep parking on the coalescer; the poller is the
+                    // single remaining completer (the SDK delivers exactly one
+                    // terminal callback per initSDK call, and this was it).
+                    InFlightInitPoller.awaitInitialization(
+                        isInitialized: { VelocityAds.isInitialized() }
+                    ) { initialized in
+                        let outcome: InitOutcome = initialized
+                            ? (.initializedSuccess, nil)
+                            : (.initializedFailure,
+                               "Velocity Ads: timed out waiting for in-flight SDK initialization")
+                        VelocityAdsMaxAdapter.initCoalescer.complete(with: outcome)
+                    }
+                    return
+                }
+                VelocityAdsMaxAdapter.initCoalescer.complete(
+                    with: (.initializedFailure, "[\(error.code)] \(error.message)")
+                )
+            }
+        )
         pendingInitDelegate = bridge
         VelocityAds.initSDK(request, delegate: bridge)
     }
@@ -421,24 +448,29 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
 // MARK: - VelocityAdsInitBridge
 
-/// Internal helper that routes `VelocityAdsInitDelegate` callbacks to the MAX
-/// completion handler. Kept alive as `pendingInitDelegate` on the adapter.
+/// Internal helper that routes `VelocityAdsInitDelegate` callbacks to the
+/// adapter's init-completion logic. Kept alive as `pendingInitDelegate` on the
+/// adapter. Failures are forwarded with the raw `VelocityAdsError` so the
+/// caller can distinguish transient states (e.g. SDK_INITIALIZATION_IN_PROGRESS)
+/// from permanent failures.
 ///
 /// Marked `@MainActor` because `VelocityAdsInitDelegate` is a `@MainActor` protocol.
 @MainActor
 private final class VelocityAdsInitBridge: NSObject, VelocityAdsInitDelegate {
 
-    private let handler: (MAAdapterInitializationStatus, String?) -> Void
+    private let onSuccess: () -> Void
+    private let onFailure: (VelocityAdsError) -> Void
 
-    init(handler: @escaping (MAAdapterInitializationStatus, String?) -> Void) {
-        self.handler = handler
+    init(onSuccess: @escaping () -> Void, onFailure: @escaping (VelocityAdsError) -> Void) {
+        self.onSuccess = onSuccess
+        self.onFailure = onFailure
     }
 
     func onInitSuccess() {
-        handler(.initializedSuccess, nil)
+        onSuccess()
     }
 
     func onInitFailure(error: VelocityAdsError) {
-        handler(.initializedFailure, "[\(error.code)] \(error.message)")
+        onFailure(error)
     }
 }
