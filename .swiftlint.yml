@@ -1,0 +1,33 @@
+# SwiftLint configuration for velocityads-ios-max-adapter.
+# Run locally: swiftlint lint --strict (check) or swiftlint --fix && swiftlint lint --strict (fix + check)
+
+excluded:
+  - .build          # Swift Package Manager build artifacts and vendored checkouts
+
+disabled_rules:
+  - multiple_closures_with_trailing_closure  # conflicts with SwiftUI / AppLovin SDK trailing closure syntax
+
+# MAX SDK protocol callbacks use `ad` as the required parameter name — cannot rename.
+identifier_name:
+  min_length:
+    warning: 2
+    error: 2
+  max_length:
+    warning: 60
+    error: 60
+  allowed_symbols: ["_"]
+
+# VelocityAdsErrorMapper uses an exhaustive switch over all error codes — complexity is correct.
+cyclomatic_complexity:
+  warning: 25
+  error: 35
+
+# VelocityAdsMaxAdapter is a single class implementing three protocol (interstitial +
+# rewarded + native), which inherently pushes file and type sizes above the defaults.
+file_length:
+  warning: 500
+  error: 700
+
+type_body_length:
+  warning: 300
+  error: 500
