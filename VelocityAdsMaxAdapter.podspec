@@ -11,10 +11,11 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'Apache-2.0', :file => 'LICENSE' }
   s.author           = { 'Velocity Ads' => 'sdk@velocityads.io' }
 
-  # Replace with actual GitHub release URL once tags are published.
+  # Git tags use 3-segment semver (an SPM requirement); the pod version carries
+  # the 4th MAX adapter-build segment, so the tag is derived from its prefix.
   s.source           = {
     :git => 'https://github.com/velocityiodev/velocityads-ios-max-adapter.git',
-    :tag => s.version.to_s
+    :tag => s.version.to_s.split('.')[0..2].join('.')
   }
 
   s.platform         = :ios, '13.0'
@@ -22,6 +23,6 @@ Pod::Spec.new do |s|
 
   s.source_files     = 'Sources/VelocityAdsMaxAdapter/**/*.swift'
 
-  s.dependency 'AppLovinSDK', '>= 13.0.0'
+  s.dependency 'AppLovinSDK', '>= 13.0.0', '< 14.0.0'
   s.dependency 'VelocityAdsSDK', '~> 0.10.0'
 end

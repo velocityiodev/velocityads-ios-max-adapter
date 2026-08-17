@@ -11,63 +11,63 @@ enum VelocityAdsErrorMapper {
 
         // Network / HTTP layer
         case VelocityAdsErrorCode.invalidURL:
-            return make(MAAdapterError.badRequest, message: error.message)
+            return make(MAAdapterError.badRequest, from: error)
         case VelocityAdsErrorCode.networkError:
-            return make(MAAdapterError.noConnection, message: error.message)
+            return make(MAAdapterError.noConnection, from: error)
         case VelocityAdsErrorCode.jsonParseError:
-            return make(MAAdapterError.badRequest, message: error.message)
+            return make(MAAdapterError.badRequest, from: error)
         case VelocityAdsErrorCode.invalidResponse:
-            return make(MAAdapterError.badRequest, message: error.message)
+            return make(MAAdapterError.badRequest, from: error)
         case VelocityAdsErrorCode.emptyResponseBody:
-            return make(MAAdapterError.badRequest, message: error.message)
+            return make(MAAdapterError.badRequest, from: error)
         case VelocityAdsErrorCode.serverErrorField:
-            return make(MAAdapterError.serverError, message: error.message)
+            return make(MAAdapterError.serverError, from: error)
         case VelocityAdsErrorCode.httpFailure:
-            return make(MAAdapterError.serverError, message: error.message)
+            return make(MAAdapterError.serverError, from: error)
 
         // SDK init / configuration
         case VelocityAdsErrorCode.invalidAppKey:
-            return make(MAAdapterError.invalidConfiguration, message: error.message)
+            return make(MAAdapterError.invalidConfiguration, from: error)
         case VelocityAdsErrorCode.sdkNotInitialized:
-            return make(MAAdapterError.notInitialized, message: error.message)
+            return make(MAAdapterError.notInitialized, from: error)
         case VelocityAdsErrorCode.sdkInitializationInProgress:
-            return make(MAAdapterError.notInitialized, message: error.message)
+            return make(MAAdapterError.notInitialized, from: error)
 
         // Load lifecycle
         case VelocityAdsErrorCode.loadAlreadyInProgress:
-            return make(MAAdapterError.invalidLoadState, message: error.message)
+            return make(MAAdapterError.invalidLoadState, from: error)
         case VelocityAdsErrorCode.loadServiceUnavailable:
-            return make(MAAdapterError.notInitialized, message: error.message)
+            return make(MAAdapterError.notInitialized, from: error)
         case VelocityAdsErrorCode.invalidAdResponse:
-            return make(MAAdapterError.badRequest, message: error.message)
+            return make(MAAdapterError.badRequest, from: error)
         case VelocityAdsErrorCode.noFill:
-            return make(MAAdapterError.noFill, message: error.message)
+            return make(MAAdapterError.noFill, from: error)
         case VelocityAdsErrorCode.internalError:
-            return make(MAAdapterError.internalError, message: error.message)
+            return make(MAAdapterError.internalError, from: error)
         case VelocityAdsErrorCode.adAlreadyLoaded:
-            return make(MAAdapterError.invalidLoadState, message: error.message)
+            return make(MAAdapterError.invalidLoadState, from: error)
         case VelocityAdsErrorCode.waterfallLoadFailed:
-            return make(MAAdapterError.internalError, message: error.message)
+            return make(MAAdapterError.internalError, from: error)
         case VelocityAdsErrorCode.adDestroyed:
-            return make(MAAdapterError.invalidLoadState, message: error.message)
+            return make(MAAdapterError.invalidLoadState, from: error)
         case VelocityAdsErrorCode.invalidAdUnitId:
-            return make(MAAdapterError.invalidConfiguration, message: error.message)
+            return make(MAAdapterError.invalidConfiguration, from: error)
         case VelocityAdsErrorCode.adSpent:
-            return make(MAAdapterError.adExpiredError, message: error.message)
+            return make(MAAdapterError.adExpiredError, from: error)
 
         default:
-            return make(MAAdapterError.unspecified, message: error.message)
+            return make(MAAdapterError.unspecified, from: error)
         }
     }
 
     // MARK: - Private
 
-    /// Creates an `MAAdapterError` from a pre-built prototype's code, preserving the
-    /// Velocity error message for visibility in MAX logs.
-    ///
-    /// `MAAdapterError.xxx.code` returns `MAErrorCode` (an ObjC NS_ENUM). `.rawValue` extracts
-    /// the underlying `Int` required by `errorWithCode:errorString:`.
-    private static func make(_ prototype: MAAdapterError, message: String) -> MAAdapterError {
-        MAAdapterError(code: prototype.code.rawValue, errorString: message)
+    /// Creates an `MAAdapterError` from a pre-built prototype, passing the full
+    /// Velocity error through as the mediated-network error so both the Velocity
+    /// code and message stay visible in MAX logs.
+    private static func make(_ prototype: MAAdapterError, from error: VelocityAdsError) -> MAAdapterError {
+        MAAdapterError(adapterError: prototype,
+                       mediatedNetworkErrorCode: error.code,
+                       mediatedNetworkErrorMessage: error.message)
     }
 }

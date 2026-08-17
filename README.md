@@ -27,10 +27,12 @@ AppLovin MAX custom-network adapter that wraps the **Velocity Ads iOS SDK** (`Ve
 Add both the adapter and its dependencies to your `Podfile`:
 
 ```ruby
-pod 'AppLovinSDK',           '>= 13.0.0'
-pod 'VelocityAdsSDK',        '0.10.0'
+pod 'AppLovinSDK',           '>= 13.0.0', '< 14.0.0'
+pod 'VelocityAdsSDK',        '~> 0.10.0'
 pod 'VelocityAdsMaxAdapter', '0.10.0.0'
 ```
+
+> The adapter pod version follows the MAX 4-segment convention (`0.10.0.0` = SDK semver + adapter build); its git release tag is the 3-segment prefix (`0.10.0`).
 
 Then run:
 
@@ -47,7 +49,7 @@ pod install
    https://github.com/velocityiodev/velocityads-ios-max-adapter
    ```
 
-3. Select **Up to Next Major Version** from `0.10.0`.
+3. Select **Up to Next Major Version** from `0.10.0` (release tags use 3-segment semver).
 4. Add `VelocityAdsMaxAdapter` to your app target.
 
 The adapter declares its own SPM dependencies on `AppLovinSDK` and `VelocityAdsSDK`, so they are pulled in automatically.
