@@ -124,7 +124,10 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                 completionHandler(.initializedSuccess, nil)
                 return
             }
-            let won = VelocityAdsMaxAdapter.initCoalescer.claim { outcome in
+            let won = VelocityAdsMaxAdapter.initCoalescer.claim { [weak self] outcome in
+                // Guard against delivering a completion to an adapter that was
+                // destroyed while its init was in flight or coalesced.
+                guard self?.isDestroyed != true else { return }
                 completionHandler(outcome.status, outcome.message)
             }
             if won {
@@ -215,7 +218,11 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         andNotify delegate: MAInterstitialAdapterDelegate
     ) {
         runOnMainNow { [weak self] in
-            guard let self, let ad = self.interstitialAd, ad.isReady else {
+            guard let self, !self.isDestroyed else {
+                delegate.didFailToDisplayInterstitialAdWithError(MAAdapterError.invalidLoadState)
+                return
+            }
+            guard let ad = self.interstitialAd, ad.isReady else {
                 delegate.didFailToDisplayInterstitialAdWithError(MAAdapterError.adNotReady)
                 return
             }
@@ -282,7 +289,11 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         andNotify delegate: MARewardedAdapterDelegate
     ) {
         runOnMainNow { [weak self] in
-            guard let self, let ad = self.rewardedAd, ad.isReady else {
+            guard let self, !self.isDestroyed else {
+                delegate.didFailToDisplayRewardedAdWithError(MAAdapterError.invalidLoadState)
+                return
+            }
+            guard let ad = self.rewardedAd, ad.isReady else {
                 delegate.didFailToDisplayRewardedAdWithError(MAAdapterError.adNotReady)
                 return
             }
@@ -369,12 +380,22 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
                 self.bannerAd?.destroy()
                 self.bannerAd = nil
+                self.bannerAdView = nil
+                self.bannerAdDelegate = nil
 
+                let screenWidth: CGFloat
+                if #available(iOS 16.0, *) {
+                    screenWidth = UIApplication.shared.connectedScenes
+                        .compactMap { $0 as? UIWindowScene }
+                        .first?.screen.bounds.width ?? UIScreen.main.bounds.width
+                } else {
+                    screenWidth = UIScreen.main.bounds.width
+                }
                 let size = VelocityAdsMaxAdapter.resolveBannerSize(
                     serverParameters: parameters.serverParameters,
                     localExtraParameters: parameters.localExtraParameters,
                     adFormat: adFormat,
-                    fallbackWidth: UIScreen.main.bounds.width
+                    fallbackWidth: screenWidth
                 )
 
                 let adView = VelocityBannerAdView()

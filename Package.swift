@@ -38,7 +38,11 @@ let package = Package(
         ),
         .testTarget(
             name: "VelocityAdsMaxAdapterTests",
-            dependencies: ["VelocityAdsMaxAdapter"]
+            dependencies: [
+                "VelocityAdsMaxAdapter",
+                .product(name: "AppLovinSDK", package: "AppLovin-MAX-Swift-Package"),
+                .product(name: "VelocityAdsSDK", package: "velocityads-ios-sdk")
+            ]
         )
     ]
 )
