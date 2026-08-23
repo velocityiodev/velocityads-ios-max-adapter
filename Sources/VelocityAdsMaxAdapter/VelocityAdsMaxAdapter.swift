@@ -11,12 +11,13 @@ import VelocityAdsSDK
 /// parameters for the custom network. Per-placement ad unit IDs are supplied through
 /// the placement's **App ID / Placement ID** field.
 ///
-/// Supported ad formats: Interstitial, Rewarded, Native.
+/// Supported ad formats: Interstitial, Rewarded, Native, Banner / MREC / Leaderboard.
 @objc(VelocityAdsMaxAdapter)
 public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                                            MAInterstitialAdapter,
                                            MARewardedAdapter,
-                                           MANativeAdAdapter {
+                                           MANativeAdAdapter,
+                                           MAAdViewAdapter {
 
     // MARK: - Private state — interstitial
 
@@ -32,6 +33,12 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
     private var nativeAd: VelocityNativeAd?
     private var nativeAdDelegate: VelocityNativeAdapterDelegate?
+
+    // MARK: - Private state — banner
+
+    private var bannerAd: VelocityBannerAd?
+    private var bannerAdView: VelocityBannerAdView?
+    private var bannerAdDelegate: VelocityBannerAdapterDelegate?
 
     // MARK: - Private state — init
 
@@ -139,6 +146,11 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         rewardedAd?.destroy()
         rewardedAd = nil
         rewardedAdDelegate = nil
+
+        bannerAd?.destroy()
+        bannerAd = nil
+        bannerAdView = nil
+        bannerAdDelegate = nil
 
         // Strong self capture is deliberate: it keeps the adapter alive until the
         // native teardown has actually run should destroy() ever arrive off-main.
@@ -321,6 +333,72 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                 self.nativeAdDelegate = adDelegate
 
                 ad.load(delegate: adDelegate)
+            }
+        }
+    }
+
+    // MARK: - MAAdViewAdapter
+
+    public func loadAdViewAd(
+        for parameters: MAAdapterResponseParameters,
+        adFormat: MAAdFormat,
+        andNotify delegate: MAAdViewAdapterDelegate
+    ) {
+        runOnMainNow { [weak self] in
+            guard let self, !self.isDestroyed else {
+                delegate.didFailToLoadAdViewAdWithError(MAAdapterError.invalidLoadState)
+                return
+            }
+
+            let adUnitId = parameters.thirdPartyAdPlacementIdentifier
+            guard !adUnitId.isEmpty else {
+                delegate.didFailToLoadAdViewAdWithError(MAAdapterError.invalidConfiguration)
+                return
+            }
+
+            self.ensureInitialized(with: parameters) { [weak self] initialized in
+                guard let self, !self.isDestroyed else {
+                    delegate.didFailToLoadAdViewAdWithError(MAAdapterError.invalidLoadState)
+                    return
+                }
+                guard initialized else {
+                    delegate.didFailToLoadAdViewAdWithError(MAAdapterError.notInitialized)
+                    return
+                }
+
+                self.bannerAd?.destroy()
+                self.bannerAd = nil
+
+                // Adaptive width takes precedence over adFormat.
+                let size: VelocityBannerAdSize
+                let sizeLabel: String
+                if let widthNumber = parameters.localExtraParameters["adaptive_banner_width"] as? NSNumber {
+                    let requestedWidth = CGFloat(widthNumber.doubleValue)
+                    size = .adaptiveBanner(width: requestedWidth)
+                    sizeLabel = "adaptive(requestedWidth=\(Int(requestedWidth))pt)"
+                } else if adFormat == MAAdFormat.mrec {
+                    size = .mrec
+                    sizeLabel = adFormat.label
+                } else if adFormat == MAAdFormat.leader {
+                    size = .leaderboard
+                    sizeLabel = adFormat.label
+                } else {
+                    size = .banner
+                    sizeLabel = adFormat.label
+                }
+                print("[VelocityAdsMaxAdapter] Loading banner: adUnitId='\(adUnitId)' format=\(sizeLabel) resolvedSize=\(Int(size.width))x\(Int(size.height))pt")
+
+                let adView = VelocityBannerAdView()
+                self.bannerAdView = adView
+
+                let adDelegate = VelocityBannerAdapterDelegate(maxDelegate: delegate, adView: adView)
+                self.bannerAdDelegate = adDelegate
+
+                let request = VelocityBannerAdRequest.Builder(adUnitId: adUnitId, adSize: size).build()
+                let ad = VelocityBannerAd(request)
+                self.bannerAd = ad
+
+                ad.load(bannerView: adView, delegate: adDelegate)
             }
         }
     }
