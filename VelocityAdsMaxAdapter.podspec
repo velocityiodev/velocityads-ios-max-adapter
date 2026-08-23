@@ -4,7 +4,8 @@ Pod::Spec.new do |s|
   s.summary          = 'AppLovin MAX custom-network adapter for the Velocity Ads iOS SDK.'
   s.description      = <<-DESC
     VelocityAdsMaxAdapter bridges the Velocity Ads iOS SDK into the AppLovin MAX
-    mediation waterfall, supporting interstitial, rewarded, and native ad formats.
+    mediation waterfall, supporting interstitial, rewarded, native, and
+    banner / MREC / leaderboard ad formats.
   DESC
 
   s.homepage         = 'https://github.com/velocityiodev/velocityads-ios-max-adapter'

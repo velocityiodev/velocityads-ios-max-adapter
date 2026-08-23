@@ -1,5 +1,6 @@
 import AppLovinSDK
 import Foundation
+import UIKit
 import VelocityAdsSDK
 
 // MARK: - VelocityAdsMaxAdapter
@@ -369,24 +370,12 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                 self.bannerAd?.destroy()
                 self.bannerAd = nil
 
-                // Adaptive width takes precedence over adFormat.
-                let size: VelocityBannerAdSize
-                let sizeLabel: String
-                if let widthNumber = parameters.localExtraParameters["adaptive_banner_width"] as? NSNumber {
-                    let requestedWidth = CGFloat(widthNumber.doubleValue)
-                    size = .adaptiveBanner(width: requestedWidth)
-                    sizeLabel = "adaptive(requestedWidth=\(Int(requestedWidth))pt)"
-                } else if adFormat == MAAdFormat.mrec {
-                    size = .mrec
-                    sizeLabel = adFormat.label
-                } else if adFormat == MAAdFormat.leader {
-                    size = .leaderboard
-                    sizeLabel = adFormat.label
-                } else {
-                    size = .banner
-                    sizeLabel = adFormat.label
-                }
-                print("[VelocityAdsMaxAdapter] Loading banner: adUnitId='\(adUnitId)' format=\(sizeLabel) resolvedSize=\(Int(size.width))x\(Int(size.height))pt")
+                let size = VelocityAdsMaxAdapter.resolveBannerSize(
+                    serverParameters: parameters.serverParameters,
+                    localExtraParameters: parameters.localExtraParameters,
+                    adFormat: adFormat,
+                    fallbackWidth: UIScreen.main.bounds.width
+                )
 
                 let adView = VelocityBannerAdView()
                 self.bannerAdView = adView

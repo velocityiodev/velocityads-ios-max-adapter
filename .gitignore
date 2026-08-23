@@ -42,8 +42,8 @@ playground.xcworkspace
 ## ─── Swift Package Manager ────────────────────────────────────────────────────
 
 .build/
-# Uncomment to ignore resolved package versions (not recommended for apps):
-# Package.resolved
+# This is a library, not an app — resolved versions should not be committed.
+Package.resolved
 
 ## ─── CocoaPods ────────────────────────────────────────────────────────────────
 

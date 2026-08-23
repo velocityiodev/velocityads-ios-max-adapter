@@ -9,7 +9,7 @@ AppLovin MAX custom-network adapter that wraps the **Velocity Ads iOS SDK** (`Ve
 | Interstitial | ✓ |
 | Rewarded | ✓ |
 | Native | ✓ |
-| Banner / MREC | — |
+| Banner / MREC / Leaderboard | ✓ |
 
 ## Requirements
 
@@ -102,11 +102,13 @@ AppLovin MAX SDK
       │
       ▼
 VelocityAdsMaxAdapter          (ALMediationAdapter + MAInterstitialAdapter
-      │                          + MARewardedAdapter + MANativeAdAdapter)
+      │                          + MARewardedAdapter + MANativeAdAdapter
+      │                          + MAAdViewAdapter)
       │
       ├── VelocityInterstitialAdapterDelegate   (VelocityInterstitialAdDelegate → MAX)
       ├── VelocityRewardedAdapterDelegate       (VelocityRewardedAdDelegate → MAX)
       ├── VelocityNativeAdapterDelegate         (VelocityNativeAdDelegate → MAX)
+      ├── VelocityBannerAdapterDelegate         (VelocityBannerAdDelegate → MAX)
       ├── VelocityMaxNativeAd                   (MANativeAd subclass)
       └── VelocityAdsErrorMapper                (VelocityAdsError → MAAdapterError)
 ```
@@ -125,6 +127,12 @@ VelocityAdsMaxAdapter          (ALMediationAdapter + MAInterstitialAdapter
 1. MAX calls `loadNativeAd` → adapter creates `VelocityNativeAd`, calls `.load(delegate:)`.
 2. On success, the delegate bridge builds a `VelocityMaxNativeAd` (an `MANativeAd` subclass) from the `NativeAd` data.
 3. When MAX renders the native template, it calls `prepare(forInteractionClickableViews:withContainer:)` on `VelocityMaxNativeAd`, which forwards to `VelocityNativeAd.registerViewForInteraction`.
+
+**Banner / MREC / Leaderboard**
+
+1. MAX calls `loadAdViewAd(for:adFormat:andNotify:)` → adapter resolves size via `resolveBannerSize(...)`: adaptive sizing is gated on the `adaptive_banner` server parameter (boolean), using the `adaptive_banner_width` extra param when present or falling back to the screen width; otherwise the size comes from `adFormat`. It then creates a `VelocityBannerAdView` and `VelocityBannerAd` and calls `.load(bannerView:delegate:)`.
+2. On success, `VelocityBannerAdapterDelegate` calls `didLoadAdForAdView(_:)` with the banner view.
+3. MAX places the returned view into its ad container; impression and click callbacks flow through the delegate bridge.
 
 ## License
 
