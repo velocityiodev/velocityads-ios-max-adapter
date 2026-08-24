@@ -33,10 +33,11 @@ final class VelocityNativeAdapterDelegate: NSObject, VelocityNativeAdDelegate {
         }
 
         // Prefer the square variant (works in both portrait and landscape MAX templates);
-        // fall back to the landscape hero if only that is available.
+        // fall back to the landscape hero. Empty strings are treated as absent so a
+        // blank squareImageUrl cannot mask an available largeImageUrl.
         var mainImage: MANativeAdImage?
-        if let rawUrl = data.squareImageUrl ?? data.largeImageUrl,
-           let mainURL = URL(string: rawUrl) {
+        if let mainURL = Self.mainImageURL(squareImageUrl: data.squareImageUrl,
+                                           largeImageUrl: data.largeImageUrl) {
             mainImage = MANativeAdImage(url: mainURL)
         }
 
@@ -55,6 +56,18 @@ final class VelocityNativeAdapterDelegate: NSObject, VelocityNativeAdDelegate {
 
     func onAdFailedToLoad(nativeAd: VelocityNativeAd, error: VelocityAdsError) {
         maxDelegate?.didFailToLoadNativeAdWithError(VelocityAdsErrorMapper.map(error))
+    }
+
+    // MARK: - Main image selection
+
+    /// Chooses the main-image URL for the MAX native template: prefer the square
+    /// variant, fall back to the landscape hero. `nil` and empty-string values are
+    /// both treated as absent. Pure and nonisolated so it is unit-testable.
+    nonisolated static func mainImageURL(squareImageUrl: String?, largeImageUrl: String?) -> URL? {
+        [squareImageUrl, largeImageUrl]
+            .compactMap { $0 }
+            .first { !$0.isEmpty }
+            .flatMap { URL(string: $0) }
     }
 
     func onAdImpression(nativeAd: VelocityNativeAd) {

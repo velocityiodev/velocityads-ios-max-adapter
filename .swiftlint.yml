@@ -7,6 +7,14 @@ excluded:
 disabled_rules:
   - multiple_closures_with_trailing_closure  # conflicts with SwiftUI / AppLovin SDK trailing closure syntax
 
+# Adapter ships inside publisher apps — a force-unwrap crash is unacceptable.
+# Relaxed for Tests/ via the nested Tests/VelocityAdsMaxAdapterTests/.swiftlint.yml.
+opt_in_rules:
+  - force_unwrapping
+
+force_unwrapping:
+  severity: error
+
 # MAX SDK protocol callbacks use `ad` as the required parameter name — cannot rename.
 identifier_name:
   min_length:

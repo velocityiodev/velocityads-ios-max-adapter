@@ -43,9 +43,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
     // MARK: - Private state — init
 
-    /// Held strongly so the delegate is alive for the duration of async SDK initialisation.
-    private var pendingInitDelegate: VelocityAdsInitBridge?
-
     /// Set to `true` in `destroy()` so any queued async blocks can bail out early.
     ///
     /// Thread-safety: AppLovin MAX guarantees that all adapter lifecycle methods
@@ -54,18 +51,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     /// main-thread blocks — both happen on the main thread (serial), so no
     /// additional synchronisation is required.
     private var isDestroyed = false
-
-    // MARK: - Class-level init coalescing (main-actor-confined)
-
-    private typealias InitOutcome = (status: MAAdapterInitializationStatus, message: String?)
-
-    /// Coalesces concurrent `VelocityAds.initSDK` attempts across adapter instances:
-    /// only the first caller performs the SDK call; everyone else parks a handler
-    /// and receives the winner's broadcast. This prevents the SDK from rejecting
-    /// the second call with SDK_INITIALIZATION_IN_PROGRESS and MAX from treating
-    /// that rejection as a permanent network failure.
-    @MainActor
-    private static let initCoalescer = InitCoalescer<InitOutcome>()
 
     // MARK: - ALMediationAdapter overrides
 
@@ -125,9 +110,14 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                 return
             }
             let won = VelocityAdsMaxAdapter.initCoalescer.claim { [weak self] outcome in
-                // Guard against delivering a completion to an adapter that was
-                // destroyed while its init was in flight or coalesced.
-                guard self?.isDestroyed != true else { return }
+                // A destroyed adapter still owes MAX exactly one completion —
+                // degrade to failure rather than leaving MAX to hit its own
+                // init timeout waiting for a callback that never comes.
+                if self?.isDestroyed == true {
+                    completionHandler(.initializedFailure,
+                                      "Velocity Ads adapter was destroyed before initialization completed")
+                    return
+                }
                 completionHandler(outcome.status, outcome.message)
             }
             if won {
@@ -137,28 +127,33 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     public override func destroy() {
-        isDestroyed = true
-
-        // Release the init bridge first so any in-flight SDK initialisation
-        // no longer delivers its completion callback to a destroyed adapter.
-        pendingInitDelegate = nil
-
-        interstitialAd?.destroy()
-        interstitialAd = nil
-        interstitialAdDelegate = nil
-
-        rewardedAd?.destroy()
-        rewardedAd = nil
-        rewardedAdDelegate = nil
-
-        bannerAd?.destroy()
-        bannerAd = nil
-        bannerAdView = nil
-        bannerAdDelegate = nil
-
         // Strong self capture is deliberate: it keeps the adapter alive until the
-        // native teardown has actually run should destroy() ever arrive off-main.
+        // teardown has actually run should destroy() ever arrive off-main. On the
+        // documented MAX main-thread path the block executes inline, so behavior
+        // is unchanged; off-main, confining every mutation to the main actor
+        // avoids racing the main-actor-confined readers in the load/show paths.
+        //
+        // The in-flight init bridge is intentionally NOT touched here: it is
+        // coalescer-scoped (see `activeInitBridge`) and must stay alive so parked
+        // handlers on other adapter instances still receive the init outcome.
+        // Delivery to this destroyed instance is prevented by the `isDestroyed`
+        // guards inside the parked handlers themselves.
         runOnMainNow {
+            self.isDestroyed = true
+
+            self.interstitialAd?.destroy()
+            self.interstitialAd = nil
+            self.interstitialAdDelegate = nil
+
+            self.rewardedAd?.destroy()
+            self.rewardedAd = nil
+            self.rewardedAdDelegate = nil
+
+            self.bannerAd?.destroy()
+            self.bannerAd = nil
+            self.bannerAdView = nil
+            self.bannerAdDelegate = nil
+
             self.tearDownNativeAd()
         }
     }
@@ -229,6 +224,13 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
             // Refresh the delegate pointer so display-phase events reach the correct
             // MAInterstitialAdapterDelegate instance, then show.
+            //
+            // parameters.presentingViewController is deliberately not forwarded:
+            // the SDK's only seam (VelocityAds.setPresenterProvider) is a global,
+            // set-once override with hard semantics — while set, a nil return means
+            // "no presenter" with no auto-discovery fallback, and clearing it would
+            // clobber a provider installed by a cross-platform wrapper (Flutter/RN).
+            // The SDK's own topmost-VC resolution handles presentation instead.
             self.interstitialAdDelegate?.maxDelegate = delegate
             ad.show()
         }
@@ -300,6 +302,9 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
             // Refresh the delegate pointer so display-phase events reach the correct
             // MARewardedAdapterDelegate instance, then show.
+            //
+            // parameters.presentingViewController is deliberately not forwarded —
+            // see the rationale in showInterstitialAd(for:andNotify:).
             self.rewardedAdDelegate?.maxDelegate = delegate
             ad.show()
         }
@@ -383,19 +388,11 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                 self.bannerAdView = nil
                 self.bannerAdDelegate = nil
 
-                let screenWidth: CGFloat
-                if #available(iOS 16.0, *) {
-                    screenWidth = UIApplication.shared.connectedScenes
-                        .compactMap { $0 as? UIWindowScene }
-                        .first?.screen.bounds.width ?? UIScreen.main.bounds.width
-                } else {
-                    screenWidth = UIScreen.main.bounds.width
-                }
                 let size = VelocityAdsMaxAdapter.resolveBannerSize(
                     serverParameters: parameters.serverParameters,
                     localExtraParameters: parameters.localExtraParameters,
                     adFormat: adFormat,
-                    fallbackWidth: screenWidth
+                    fallbackWidth: self.fallbackBannerWidth()
                 )
 
                 let adView = VelocityBannerAdView()
@@ -414,6 +411,28 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     // MARK: - Main-thread helpers
+
+    /// Width (pt) used for an adaptive banner when MAX supplies no explicit width.
+    ///
+    /// Prefers the foreground-active window scene's key window — `connectedScenes`
+    /// is an unordered `Set`, so taking an arbitrary scene can pick a background
+    /// or external-display scene on multi-scene apps, and the key-window width
+    /// (not the screen width) is what matches the available container width in
+    /// iPad Split View. Falls back through scene screen width to `UIScreen.main`.
+    @MainActor
+    private func fallbackBannerWidth() -> CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive }
+            ?? scenes.first { $0.activationState == .foregroundInactive }
+            ?? scenes.first
+        guard let scene else {
+            return UIScreen.main.bounds.width
+        }
+        if let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first {
+            return window.bounds.width
+        }
+        return scene.screen.bounds.width
+    }
 
     /// Executes `block` on the main actor — inline when already on the main
     /// thread, otherwise deferred via `DispatchQueue.main.async`.
@@ -447,118 +466,4 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         nativeAdDelegate = nil
     }
 
-    // MARK: - Init helpers
-
-    /// Ensures the Velocity SDK is initialized before a load proceeds.
-    ///
-    /// If the SDK is already up, `completion(true)` fires synchronously. Otherwise
-    /// a re-init is attempted (or coalesced onto an in-flight attempt) using the
-    /// same machinery as `initialize(with:completionHandler:)`, and `completion`
-    /// receives the outcome. This covers the case where the original MAX-driven
-    /// init failed transiently (e.g. no connectivity at app launch) but a load
-    /// arrives later when the SDK could now initialize successfully.
-    @MainActor
-    private func ensureInitialized(
-        with parameters: MAAdapterResponseParameters,
-        completion: @escaping @MainActor (Bool) -> Void
-    ) {
-        if VelocityAds.isInitialized() {
-            completion(true)
-            return
-        }
-
-        guard let appKey = parameters.serverParameters["app_key"] as? String,
-              !appKey.isEmpty else {
-            completion(false)
-            return
-        }
-
-        let won = VelocityAdsMaxAdapter.initCoalescer.claim { outcome in
-            completion(outcome.status == .initializedSuccess)
-        }
-        if won {
-            startClaimedInit(appKey: appKey)
-        }
-    }
-
-    /// Performs the actual `VelocityAds.initSDK` call on behalf of the caller
-    /// that won the coalescer claim, broadcasting the outcome to every parked
-    /// handler when the SDK responds.
-    @MainActor
-    private func startClaimedInit(appKey: String) {
-        let request = VelocityAdsInitRequest.Builder(appKey).build()
-        let bridge = VelocityAdsInitBridge(
-            onSuccess: { [weak self] in
-                self?.pendingInitDelegate = nil
-                VelocityAdsMaxAdapter.initCoalescer.complete(with: (.initializedSuccess, nil))
-            },
-            onFailure: { [weak self] error in
-                self?.pendingInitDelegate = nil
-                if error.code == VelocityAdsErrorCode.sdkInitializationInProgress {
-                    // The host app called VelocityAds.initSDK moments before the
-                    // adapter did, so the SDK rejected our call. Not a permanent
-                    // failure — wait for the in-flight init and report the real
-                    // outcome. The claim stays held during polling so concurrent
-                    // callers keep parking on the coalescer; the poller is the
-                    // single remaining completer (the SDK delivers exactly one
-                    // terminal callback per initSDK call, and this was it).
-                    InFlightInitPoller.awaitInitialization(
-                        isInitialized: { VelocityAds.isInitialized() }
-                    ) { initialized in
-                        let outcome: InitOutcome = initialized
-                            ? (.initializedSuccess, nil)
-                            : (.initializedFailure,
-                               "Velocity Ads: timed out waiting for in-flight SDK initialization")
-                        VelocityAdsMaxAdapter.initCoalescer.complete(with: outcome)
-                    }
-                    return
-                }
-                VelocityAdsMaxAdapter.initCoalescer.complete(
-                    with: (.initializedFailure, "[\(error.code)] \(error.message)")
-                )
-            }
-        )
-        pendingInitDelegate = bridge
-        VelocityAds.initSDK(request, delegate: bridge)
-    }
-
-    // MARK: - Privacy helpers
-
-    private func forwardPrivacySettings(from parameters: MAAdapterInitializationParameters) {
-        if let consent = parameters.userConsent {
-            VelocityAds.setConsent(consent.boolValue)
-        }
-        if let doNotSell = parameters.doNotSell {
-            VelocityAds.setDoNotSell(doNotSell.boolValue)
-        }
-    }
-}
-
-// MARK: - VelocityAdsInitBridge
-
-/// Internal helper that routes `VelocityAdsInitDelegate` callbacks to the
-/// adapter's init-completion logic. Kept alive as `pendingInitDelegate` on the
-/// adapter. Failures are forwarded with the raw `VelocityAdsError` so the
-/// caller can distinguish transient states (e.g. SDK_INITIALIZATION_IN_PROGRESS)
-/// from permanent failures.
-///
-/// Marked `@MainActor` because `VelocityAdsInitDelegate` is a `@MainActor` protocol.
-@MainActor
-private final class VelocityAdsInitBridge: NSObject, VelocityAdsInitDelegate {
-
-    private let onSuccess: () -> Void
-    private let onFailure: (VelocityAdsError) -> Void
-
-    init(onSuccess: @escaping () -> Void, onFailure: @escaping (VelocityAdsError) -> Void) {
-        self.onSuccess = onSuccess
-        self.onFailure = onFailure
-    }
-
-    func onInitSuccess() {
-        onSuccess()
-    }
-
-    func onInitFailure(error: VelocityAdsError) {
-        onFailure(error)
-    }
 }

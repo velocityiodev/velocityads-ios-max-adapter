@@ -32,18 +32,25 @@ private final class StubInitParameters: NSObject, MAAdapterInitializationParamet
 private final class StubResponseParameters: NSObject, MAAdapterResponseParameters {
     private let _adUnitId: String
     private let _serverParameters: [String: Any]
+    private let _userConsent: NSNumber?
+    private let _doNotSell: NSNumber?
 
-    init(adUnitId: String = "test-ad-unit", serverParameters: [String: Any] = ["app_key": "test-key"]) {
+    init(adUnitId: String = "test-ad-unit",
+         serverParameters: [String: Any] = ["app_key": "test-key"],
+         userConsent: NSNumber? = nil,
+         doNotSell: NSNumber? = nil) {
         self._adUnitId = adUnitId
         self._serverParameters = serverParameters
+        self._userConsent = userConsent
+        self._doNotSell = doNotSell
     }
 
     var adUnitIdentifier: String { "" }
     var localExtraParameters: [String: Any] { [:] }
     var serverParameters: [String: Any] { _serverParameters }
     var customParameters: [String: Any] { [:] }
-    var userConsent: NSNumber? { nil }
-    var doNotSell: NSNumber? { nil }
+    var userConsent: NSNumber? { _userConsent }
+    var doNotSell: NSNumber? { _doNotSell }
     var consentString: String? { nil }
     var isTesting: Bool { false }
     var presentingViewController: UIViewController? { nil }
@@ -137,6 +144,40 @@ private final class SpyAdViewDelegate: NSObject, MAAdViewAdapterDelegate {
 @MainActor
 final class VelocityAdsMaxAdapterTests: XCTestCase {
 
+    /// Delegates handed to the stubbed initSDK runner, so tests can drive the
+    /// coalesced init flow to completion deterministically.
+    private var capturedInitDelegates: [VelocityAdsInitDelegate] = []
+
+    override func setUp() {
+        super.setUp()
+        capturedInitDelegates = []
+        // Stub the SDK init trigger: unit tests must never perform real network
+        // initialization. Individual tests complete the flow via the captured
+        // delegate when they need a terminal outcome.
+        VelocityAdsMaxAdapter.initSDKRunnerForTesting = { [weak self] _, delegate in
+            self?.capturedInitDelegates.append(delegate)
+        }
+    }
+
+    override func tearDown() {
+        // Unclaims the shared static coalescer and clears all test seams so
+        // state cannot leak between test cases.
+        VelocityAdsMaxAdapter.resetInitStateForTesting()
+        capturedInitDelegates = []
+        super.tearDown()
+    }
+
+    /// Completes the in-flight stubbed init with a failure outcome.
+    private func failInFlightInit() {
+        for delegate in capturedInitDelegates {
+            delegate.onInitFailure(error: VelocityAdsError(
+                code: VelocityAdsErrorCode.internalError,
+                message: "test-driven init failure"
+            ))
+        }
+        capturedInitDelegates = []
+    }
+
     // MARK: - initialize() — synchronous guard paths
 
     func test_initialize_withMissingAppKey_callsCompletionWithFailure() {
@@ -146,7 +187,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
 
         // When
         var status: MAAdapterInitializationStatus?
-        adapter.initialize(with: params) { s, _ in status = s }
+        adapter.initialize(with: params) { result, _ in status = result }
 
         // Then
         XCTAssertEqual(status, .initializedFailure,
@@ -160,7 +201,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
 
         // When
         var status: MAAdapterInitializationStatus?
-        adapter.initialize(with: params) { s, _ in status = s }
+        adapter.initialize(with: params) { result, _ in status = result }
 
         // Then
         XCTAssertEqual(status, .initializedFailure,
@@ -175,7 +216,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
 
         // When
         var status: MAAdapterInitializationStatus?
-        adapter.initialize(with: params) { s, _ in status = s }
+        adapter.initialize(with: params) { result, _ in status = result }
 
         // Then — the isDestroyed guard inside runOnMainNow fires synchronously
         XCTAssertEqual(status, .initializedFailure,
@@ -184,7 +225,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
 
     // MARK: - initialize() — coalescing
 
-    func test_initialize_simultaneousCalls_neitherHandlerCalledSynchronously() {
+    func test_initialize_simultaneousCalls_coalesceOntoOneInitAndShareTheOutcome() {
         // Given — two adapter instances sharing the same static initCoalescer
         let adapter1 = VelocityAdsMaxAdapter()
         let adapter2 = VelocityAdsMaxAdapter()
@@ -194,17 +235,118 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
         var outcome1: MAAdapterInitializationStatus?
         var outcome2: MAAdapterInitializationStatus?
 
-        adapter1.initialize(with: params) { s, _ in outcome1 = s }
-        adapter2.initialize(with: params) { s, _ in outcome2 = s }
+        adapter1.initialize(with: params) { result, _ in outcome1 = result }
+        adapter2.initialize(with: params) { result, _ in outcome2 = result }
 
-        // Then — neither completion handler is called synchronously.
-        // Both are parked in the shared InitCoalescer waiting for the async
-        // VelocityAds.initSDK result, which confirms coalescing is in effect:
-        // the second call did not receive an immediate SDK_INITIALIZATION_IN_PROGRESS
-        // failure, which would have been the outcome if it bypassed the coalescer
-        // and called initSDK independently while the first call was still in flight.
+        // Then — only the first caller triggers the SDK init; the second parks on
+        // the coalescer instead of receiving an immediate
+        // SDK_INITIALIZATION_IN_PROGRESS failure. Neither completes synchronously.
+        XCTAssertEqual(capturedInitDelegates.count, 1,
+                       "Exactly one SDK init must be started for coalesced concurrent calls")
         XCTAssertNil(outcome1, "First initialize handler must not fire synchronously")
         XCTAssertNil(outcome2, "Second initialize handler must not fire synchronously")
+
+        // When — the single in-flight init resolves
+        failInFlightInit()
+
+        // Then — the outcome is broadcast to both parked handlers
+        XCTAssertEqual(outcome1, .initializedFailure, "Winner must receive the broadcast outcome")
+        XCTAssertEqual(outcome2, .initializedFailure, "Parked caller must receive the broadcast outcome")
+    }
+
+    func test_initialize_destroyedWhileInitInFlight_stillCompletesWithFailure() {
+        // Given — an initialize whose SDK init is still in flight
+        let adapter = VelocityAdsMaxAdapter()
+        let params = StubInitParameters(serverParameters: ["app_key": "test-key"])
+
+        var status: MAAdapterInitializationStatus?
+        var message: String?
+        adapter.initialize(with: params) { result, resultMessage in
+            status = result
+            message = resultMessage
+        }
+        XCTAssertNil(status, "Init must be pending before the SDK responds")
+
+        // When — the adapter is destroyed mid-flight, then the init resolves
+        adapter.destroy()
+        failInFlightInit()
+
+        // Then — MAX still receives exactly one completion, degraded to failure
+        XCTAssertEqual(status, .initializedFailure,
+                       "A destroyed adapter must still complete its MAX init handler")
+        XCTAssertEqual(message, "Velocity Ads adapter was destroyed before initialization completed")
+    }
+
+    func test_initialize_winnerDestroyedMidFlight_parkedPeerStillReceivesOutcome() {
+        // Given — adapter1 wins the claim, adapter2 parks on the coalescer
+        let adapter1 = VelocityAdsMaxAdapter()
+        let adapter2 = VelocityAdsMaxAdapter()
+        let params = StubInitParameters(serverParameters: ["app_key": "test-key"])
+
+        var outcome2: MAAdapterInitializationStatus?
+        adapter1.initialize(with: params) { _, _ in }
+        adapter2.initialize(with: params) { result, _ in outcome2 = result }
+
+        // When — the winning adapter is destroyed while its init is in flight.
+        // The init bridge is coalescer-scoped, so destroying the winner must not
+        // strand the parked peer.
+        adapter1.destroy()
+        failInFlightInit()
+
+        // Then
+        XCTAssertEqual(outcome2, .initializedFailure,
+                       "Parked adapter must receive the outcome even after the winner is destroyed")
+    }
+
+    // MARK: - Privacy forwarding on load
+
+    func test_loadInterstitialAd_forwardsPrivacySignalsFromResponseParameters() {
+        // Given
+        let adapter = VelocityAdsMaxAdapter()
+        let params = StubResponseParameters(adUnitId: "test-unit",
+                                            userConsent: NSNumber(value: false),
+                                            doNotSell: NSNumber(value: true))
+        let spy = SpyInterstitialDelegate()
+
+        var forwardedConsent: Bool??
+        var forwardedDoNotSell: Bool??
+        VelocityAdsMaxAdapter.privacyForwardingObserverForTesting = { consent, doNotSell in
+            forwardedConsent = consent
+            forwardedDoNotSell = doNotSell
+        }
+
+        // When — a load arrives with updated CMP state
+        adapter.loadInterstitialAd(for: params, andNotify: spy)
+
+        // Then — the signals are forwarded to the SDK before the request proceeds
+        XCTAssertEqual(forwardedConsent, .some(false),
+                       "Mid-session consent revocation must be forwarded on load")
+        XCTAssertEqual(forwardedDoNotSell, .some(true),
+                       "Mid-session do-not-sell opt-out must be forwarded on load")
+    }
+
+    func test_loadNativeAd_withUnsetPrivacyFlags_forwardsNothing() {
+        // Given
+        let adapter = VelocityAdsMaxAdapter()
+        let params = StubResponseParameters(adUnitId: "test-unit")
+        let spy = SpyNativeDelegate()
+
+        var observed = false
+        var forwardedConsent: Bool??
+        var forwardedDoNotSell: Bool??
+        VelocityAdsMaxAdapter.privacyForwardingObserverForTesting = { consent, doNotSell in
+            observed = true
+            forwardedConsent = consent
+            forwardedDoNotSell = doNotSell
+        }
+
+        // When
+        adapter.loadNativeAd(for: params, andNotify: spy)
+
+        // Then — the forwarding path runs, but nil (unset) flags are not forwarded
+        XCTAssertTrue(observed, "Privacy forwarding must run on every load")
+        XCTAssertEqual(forwardedConsent, .some(nil), "Unset consent must stay unset")
+        XCTAssertEqual(forwardedDoNotSell, .some(nil), "Unset do-not-sell must stay unset")
     }
 
     // MARK: - destroy() lifecycle
