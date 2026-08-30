@@ -8,7 +8,6 @@ import Foundation
 /// initialization moments earlier. That rejection is not a permanent failure —
 /// the in-flight init will finish shortly — so instead of reporting
 /// `.initializedFailure` to MAX, the adapter waits for the real outcome.
-/// Mirrors the Android adapter's `awaitInFlightInitialization`.
 ///
 /// `completion` is invoked exactly once: every poll iteration either terminates
 /// with a completion call or reschedules itself, never both.
