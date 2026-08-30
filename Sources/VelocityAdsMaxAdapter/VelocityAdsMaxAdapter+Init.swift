@@ -72,10 +72,6 @@ extension VelocityAdsMaxAdapter {
         // so a consent change between init and the first load is not silently lost.
         forwardPrivacySettings()
 
-        // Covers the lazy-init path where network-level initialize() never saw an
-        // app_id and the real SDK init happens here on the first load.
-        forwardMediationInfo()
-
         if VelocityAds.isInitialized() {
             completion(true)
             return

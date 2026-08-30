@@ -93,7 +93,7 @@ Both flags are only forwarded when explicitly set by the publisher; `nil` values
 
 ## Mediation environment reporting
 
-At initialisation (and again on the lazy-init load path) the adapter reports the mediation environment to the Velocity SDK via `VelocityAdsMediationBridge.setMediationInfo(name:adapterVersion:sdkVersion:)`:
+At initialisation the adapter reports the mediation environment to the Velocity SDK via `VelocityAdsMediationBridge.setMediationInfo(name:adapterVersion:sdkVersion:)`:
 
 | Field | Value |
 |---|---|
