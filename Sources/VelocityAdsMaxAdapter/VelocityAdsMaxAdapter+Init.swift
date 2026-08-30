@@ -70,7 +70,7 @@ extension VelocityAdsMaxAdapter {
         // load, so this is the right place to pick up mid-session CMP changes.
         // Forward unconditionally — even when the SDK is already initialized —
         // so a consent change between init and the first load is not silently lost.
-        forwardPrivacySettings(from: parameters)
+        forwardPrivacySettings()
 
         if VelocityAds.isInitialized() {
             completion(true)
@@ -141,18 +141,16 @@ extension VelocityAdsMaxAdapter {
 
     /// Forwards the current AppLovin privacy state to the Velocity SDK.
     ///
-    /// Reads directly from `ALPrivacySettings` — the authoritative iOS source —
-    /// rather than from the MAX adapter parameters. `parameters.userConsent` and
-    /// `parameters.doNotSell` are only reliably non-nil when the publisher has
-    /// already called `ALPrivacySettings.setHasUserConsent/setDoNotSell` *and* the
-    /// MAX SDK has had time to propagate those values into the parameter object,
-    /// which is not guaranteed on every adapter entry point. Reading from
-    /// `ALPrivacySettings` directly is always accurate and requires no parameter
-    /// threading.
+    /// Reads directly from `ALPrivacySettings` — the authoritative iOS source.
+    /// `MAAdapterParameters.userConsent` / `doNotSell` are not used because they
+    /// are only reliably non-nil when the publisher has already called the
+    /// `ALPrivacySettings` setters *and* the MAX SDK has propagated the values
+    /// into the parameter object — which is not guaranteed on every adapter entry
+    /// point (and in particular is unreliable on `MAAdapterResponseParameters`).
     ///
     /// Called at `initialize` (before SDK boots) and on every ad load via
     /// `ensureInitialized`, so mid-session CMP changes propagate on the next request.
-    func forwardPrivacySettings(from parameters: MAAdapterParameters) {
+    func forwardPrivacySettings() {
         let consent: Bool? = ALPrivacySettings.isUserConsentSet() ? ALPrivacySettings.hasUserConsent() : nil
         let doNotSell: Bool? = ALPrivacySettings.isDoNotSellSet() ? ALPrivacySettings.isDoNotSell() : nil
         #if DEBUG

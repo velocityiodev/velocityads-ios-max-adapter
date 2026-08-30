@@ -67,8 +67,8 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         with parameters: MAAdapterInitializationParameters,
         completionHandler: @escaping (MAAdapterInitializationStatus, String?) -> Void
     ) {
-        // Privacy must be forwarded before the SDK is initialised.
-        forwardPrivacySettings(from: parameters)
+        // Forward privacy before SDK init so consent is set from the first request.
+        forwardPrivacySettings()
 
         // Fast path — SDK already up.
         if VelocityAds.isInitialized() {
