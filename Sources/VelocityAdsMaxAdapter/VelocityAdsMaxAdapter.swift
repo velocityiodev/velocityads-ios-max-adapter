@@ -151,7 +151,9 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         bannerAdView = nil
         bannerAdDelegate = nil
 
-        tearDownNativeAd()
+        // MAX guarantees destroy() is called on the main thread. assumeIsolated
+        // satisfies the compiler and traps in debug if that contract is broken.
+        MainActor.assumeIsolated { tearDownNativeAd() }
     }
 
     // MARK: - MAInterstitialAdapter
