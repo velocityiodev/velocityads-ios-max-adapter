@@ -75,13 +75,9 @@ The adapter declares its own SPM dependencies on `AppLovinSDK` and `VelocityAdsS
 
 5. Save the network.
 6. Open the **Ad Units** for your app and add a waterfall line for **Velocity Ads**.
-7. In the line's settings, under **Server Side Parameters**, add:
-
-   | Key | Value |
-   |---|---|
-   | `app_key` | Your Velocity Ads app key |
-
-8. Set the **App ID / Placement ID** field to the Velocity Ads ad unit ID for that placement.
+7. In the line's settings, set the **App ID** field to your Velocity Ads app key.
+   MAX delivers this value to the adapter as `serverParameters["app_id"]`.
+8. Set the **Placement ID** field to the Velocity Ads ad unit ID for that placement.
 9. Activate the line and publish.
 
 ## Privacy

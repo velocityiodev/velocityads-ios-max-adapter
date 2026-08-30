@@ -218,7 +218,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
         var status: MAAdapterInitializationStatus?
         adapter.initialize(with: params) { result, _ in status = result }
 
-        // Then — the isDestroyed guard inside runOnMainNow fires synchronously
+        // Then — the isDestroyed guard fires synchronously
         XCTAssertEqual(status, .initializedFailure,
                        "A destroyed adapter must report initializedFailure immediately")
     }

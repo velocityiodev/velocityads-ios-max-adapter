@@ -76,8 +76,7 @@ extension VelocityAdsMaxAdapter {
             return
         }
 
-        guard let appKey = parameters.serverParameters["app_key"] as? String,
-              !appKey.isEmpty else {
+        guard let appKey = (parameters.serverParameters["app_id"] as? String)?.nilIfEmpty else {
             completion(false)
             return
         }

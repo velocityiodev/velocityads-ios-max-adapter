@@ -8,9 +8,10 @@ import VelocityAdsSDK
 /// AppLovin MAX custom-network adapter for the Velocity Ads iOS SDK.
 ///
 /// Register this class in the MAX dashboard under **Manage Networks → Custom SDK Network**
-/// with iOS class name `VelocityAdsMaxAdapter`. Set `app_key` in the **Server Side**
-/// parameters for the custom network. Per-placement ad unit IDs are supplied through
-/// the placement's **App ID / Placement ID** field.
+/// with iOS class name `VelocityAdsMaxAdapter`. Set the Velocity app key in the **App ID**
+/// field of every ad unit's Velocity Ads waterfall entry — MAX delivers it as
+/// `serverParameters["app_id"]`. Per-placement Velocity ad unit IDs are supplied through
+/// the **Placement ID** field.
 ///
 /// Supported ad formats: Interstitial, Rewarded, Native, Banner / MREC / Leaderboard.
 @objc(VelocityAdsMaxAdapter)
@@ -75,10 +76,13 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
             return
         }
 
-        guard let appKey = parameters.serverParameters["app_key"] as? String,
-              !appKey.isEmpty else {
-            completionHandler(.initializedFailure,
-                              "Velocity Ads: missing or empty 'app_key' in server parameters")
+        // The App ID field is optional in the MAX dashboard's Custom Network settings, so
+        // app_id may not be present at network-level initialization time. Report
+        // initializedUnknown — the adapter is ready but the app key arrives via the
+        // per-placement App ID field at load time; ensureInitialized() performs the
+        // real SDK init lazily on the first load.
+        guard let appKey = (parameters.serverParameters["app_id"] as? String)?.nilIfEmpty else {
+            completionHandler(.initializedUnknown, nil)
             return
         }
 
@@ -127,35 +131,27 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
     }
 
     public override func destroy() {
-        // Strong self capture is deliberate: it keeps the adapter alive until the
-        // teardown has actually run should destroy() ever arrive off-main. On the
-        // documented MAX main-thread path the block executes inline, so behavior
-        // is unchanged; off-main, confining every mutation to the main actor
-        // avoids racing the main-actor-confined readers in the load/show paths.
-        //
         // The in-flight init bridge is intentionally NOT touched here: it is
         // coalescer-scoped (see `activeInitBridge`) and must stay alive so parked
         // handlers on other adapter instances still receive the init outcome.
         // Delivery to this destroyed instance is prevented by the `isDestroyed`
         // guards inside the parked handlers themselves.
-        runOnMainNow {
-            self.isDestroyed = true
+        isDestroyed = true
 
-            self.interstitialAd?.destroy()
-            self.interstitialAd = nil
-            self.interstitialAdDelegate = nil
+        interstitialAd?.destroy()
+        interstitialAd = nil
+        interstitialAdDelegate = nil
 
-            self.rewardedAd?.destroy()
-            self.rewardedAd = nil
-            self.rewardedAdDelegate = nil
+        rewardedAd?.destroy()
+        rewardedAd = nil
+        rewardedAdDelegate = nil
 
-            self.bannerAd?.destroy()
-            self.bannerAd = nil
-            self.bannerAdView = nil
-            self.bannerAdDelegate = nil
+        bannerAd?.destroy()
+        bannerAd = nil
+        bannerAdView = nil
+        bannerAdDelegate = nil
 
-            self.tearDownNativeAd()
-        }
+        tearDownNativeAd()
     }
 
     // MARK: - MAInterstitialAdapter
