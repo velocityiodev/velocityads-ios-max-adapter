@@ -91,6 +91,18 @@ The adapter forwards consent and opt-out signals from MAX to the Velocity SDK **
 
 Both flags are only forwarded when explicitly set by the publisher; `nil` values (unset) are ignored.
 
+## Mediation environment reporting
+
+At initialisation (and again on the lazy-init load path) the adapter reports the mediation environment to the Velocity SDK via `VelocityAdsMediationBridge.setMediationInfo(name:adapterVersion:sdkVersion:)`:
+
+| Field | Value |
+|---|---|
+| Mediation name | `"max"` |
+| Adapter version | This adapter's version (e.g. `0.10.0.0`) |
+| Mediation SDK version | The AppLovin SDK version (`ALSdk.version()`) |
+
+The Velocity SDK attaches these values to every ad request (`mobileMetadata`) and every analytics event, so traffic can be sliced by mediation platform, adapter version, and AppLovin SDK version. Forwarding happens once per process — the values never change mid-session.
+
 ## How it works
 
 ```

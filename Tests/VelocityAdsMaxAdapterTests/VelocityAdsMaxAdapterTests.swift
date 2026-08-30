@@ -32,25 +32,19 @@ private final class StubInitParameters: NSObject, MAAdapterInitializationParamet
 private final class StubResponseParameters: NSObject, MAAdapterResponseParameters {
     private let _adUnitId: String
     private let _serverParameters: [String: Any]
-    private let _userConsent: NSNumber?
-    private let _doNotSell: NSNumber?
 
     init(adUnitId: String = "test-ad-unit",
-         serverParameters: [String: Any] = ["app_key": "test-key"],
-         userConsent: NSNumber? = nil,
-         doNotSell: NSNumber? = nil) {
+         serverParameters: [String: Any] = ["app_id": "test-key"]) {
         self._adUnitId = adUnitId
         self._serverParameters = serverParameters
-        self._userConsent = userConsent
-        self._doNotSell = doNotSell
     }
 
     var adUnitIdentifier: String { "" }
     var localExtraParameters: [String: Any] { [:] }
     var serverParameters: [String: Any] { _serverParameters }
     var customParameters: [String: Any] { [:] }
-    var userConsent: NSNumber? { _userConsent }
-    var doNotSell: NSNumber? { _doNotSell }
+    var userConsent: NSNumber? { nil }
+    var doNotSell: NSNumber? { nil }
     var consentString: String? { nil }
     var isTesting: Bool { false }
     var presentingViewController: UIViewController? { nil }
@@ -180,7 +174,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
 
     // MARK: - initialize() — synchronous guard paths
 
-    func test_initialize_withMissingAppKey_callsCompletionWithFailure() {
+    func test_initialize_withMissingAppId_reportsInitializedUnknown() {
         // Given
         let adapter = VelocityAdsMaxAdapter()
         let params = StubInitParameters(serverParameters: [:])
@@ -189,30 +183,31 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
         var status: MAAdapterInitializationStatus?
         adapter.initialize(with: params) { result, _ in status = result }
 
-        // Then
-        XCTAssertEqual(status, .initializedFailure,
-                       "Missing app_key must produce an immediate initializedFailure")
+        // Then — the App ID field is optional at network-level init; the real
+        // SDK init happens lazily on the first load via ensureInitialized().
+        XCTAssertEqual(status, .initializedUnknown,
+                       "Missing app_id must report initializedUnknown (lazy init on first load)")
     }
 
-    func test_initialize_withEmptyAppKey_callsCompletionWithFailure() {
+    func test_initialize_withEmptyAppId_reportsInitializedUnknown() {
         // Given
         let adapter = VelocityAdsMaxAdapter()
-        let params = StubInitParameters(serverParameters: ["app_key": ""])
+        let params = StubInitParameters(serverParameters: ["app_id": ""])
 
         // When
         var status: MAAdapterInitializationStatus?
         adapter.initialize(with: params) { result, _ in status = result }
 
         // Then
-        XCTAssertEqual(status, .initializedFailure,
-                       "Empty app_key must produce an immediate initializedFailure")
+        XCTAssertEqual(status, .initializedUnknown,
+                       "Empty app_id must report initializedUnknown (lazy init on first load)")
     }
 
     func test_initialize_afterDestroy_callsCompletionWithFailure() {
         // Given
         let adapter = VelocityAdsMaxAdapter()
         adapter.destroy()
-        let params = StubInitParameters(serverParameters: ["app_key": "test-key"])
+        let params = StubInitParameters(serverParameters: ["app_id": "test-key"])
 
         // When
         var status: MAAdapterInitializationStatus?
@@ -229,7 +224,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
         // Given — two adapter instances sharing the same static initCoalescer
         let adapter1 = VelocityAdsMaxAdapter()
         let adapter2 = VelocityAdsMaxAdapter()
-        let params = StubInitParameters(serverParameters: ["app_key": "test-key"])
+        let params = StubInitParameters(serverParameters: ["app_id": "test-key"])
 
         // When — both call initialize on the main thread (synchronous dispatch)
         var outcome1: MAAdapterInitializationStatus?
@@ -257,7 +252,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
     func test_initialize_destroyedWhileInitInFlight_stillCompletesWithFailure() {
         // Given — an initialize whose SDK init is still in flight
         let adapter = VelocityAdsMaxAdapter()
-        let params = StubInitParameters(serverParameters: ["app_key": "test-key"])
+        let params = StubInitParameters(serverParameters: ["app_id": "test-key"])
 
         var status: MAAdapterInitializationStatus?
         var message: String?
@@ -281,7 +276,7 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
         // Given — adapter1 wins the claim, adapter2 parks on the coalescer
         let adapter1 = VelocityAdsMaxAdapter()
         let adapter2 = VelocityAdsMaxAdapter()
-        let params = StubInitParameters(serverParameters: ["app_key": "test-key"])
+        let params = StubInitParameters(serverParameters: ["app_id": "test-key"])
 
         var outcome2: MAAdapterInitializationStatus?
         adapter1.initialize(with: params) { _, _ in }
@@ -300,12 +295,15 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
 
     // MARK: - Privacy forwarding on load
 
-    func test_loadInterstitialAd_forwardsPrivacySignalsFromResponseParameters() {
-        // Given
+    func test_loadInterstitialAd_forwardsCurrentALPrivacySettingsOnLoad() {
+        // Given — global AppLovin privacy state, as set by the publisher / CMP.
+        // The adapter reads ALPrivacySettings directly (response-parameter privacy
+        // fields are not reliably populated on every entry point).
+        ALPrivacySettings.setHasUserConsent(false)
+        ALPrivacySettings.setDoNotSell(true)
+
         let adapter = VelocityAdsMaxAdapter()
-        let params = StubResponseParameters(adUnitId: "test-unit",
-                                            userConsent: NSNumber(value: false),
-                                            doNotSell: NSNumber(value: true))
+        let params = StubResponseParameters(adUnitId: "test-unit")
         let spy = SpyInterstitialDelegate()
 
         var forwardedConsent: Bool??
@@ -325,28 +323,25 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
                        "Mid-session do-not-sell opt-out must be forwarded on load")
     }
 
-    func test_loadNativeAd_withUnsetPrivacyFlags_forwardsNothing() {
+    func test_loadNativeAd_runsPrivacyForwardingOnEveryLoad() {
         // Given
         let adapter = VelocityAdsMaxAdapter()
         let params = StubResponseParameters(adUnitId: "test-unit")
         let spy = SpyNativeDelegate()
 
+        // ALPrivacySettings is process-global and cannot be unset once written
+        // (a previous test or run may have set it), so this test only asserts
+        // that the forwarding path executes on the native load entry point.
         var observed = false
-        var forwardedConsent: Bool??
-        var forwardedDoNotSell: Bool??
-        VelocityAdsMaxAdapter.privacyForwardingObserverForTesting = { consent, doNotSell in
+        VelocityAdsMaxAdapter.privacyForwardingObserverForTesting = { _, _ in
             observed = true
-            forwardedConsent = consent
-            forwardedDoNotSell = doNotSell
         }
 
         // When
         adapter.loadNativeAd(for: params, andNotify: spy)
 
-        // Then — the forwarding path runs, but nil (unset) flags are not forwarded
+        // Then
         XCTAssertTrue(observed, "Privacy forwarding must run on every load")
-        XCTAssertEqual(forwardedConsent, .some(nil), "Unset consent must stay unset")
-        XCTAssertEqual(forwardedDoNotSell, .some(nil), "Unset do-not-sell must stay unset")
     }
 
     // MARK: - destroy() lifecycle

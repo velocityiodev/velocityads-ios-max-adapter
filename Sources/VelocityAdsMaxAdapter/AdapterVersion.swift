@@ -8,6 +8,10 @@
 /// then tag with the 3-segment prefix.
 internal let velocityAdsMaxAdapterVersion = "0.10.0.0"
 
+/// Mediation name reported to the Velocity SDK via `VelocityAdsMediationBridge`.
+/// Owned by this adapter — the SDK accepts any lowercase canonical string.
+internal let velocityAdsMediationName = "max"
+
 internal extension String {
     /// Returns `nil` when the string is empty, `self` otherwise.
     var nilIfEmpty: String? { isEmpty ? nil : self }

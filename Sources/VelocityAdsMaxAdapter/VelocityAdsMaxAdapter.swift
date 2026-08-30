@@ -67,6 +67,9 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         with parameters: MAAdapterInitializationParameters,
         completionHandler: @escaping (MAAdapterInitializationStatus, String?) -> Void
     ) {
+        // Identify the mediation environment before SDK init so the very first
+        // request and event carry it.
+        forwardMediationInfo()
         // Forward privacy before SDK init so consent is set from the first request.
         forwardPrivacySettings()
 

@@ -72,6 +72,10 @@ extension VelocityAdsMaxAdapter {
         // so a consent change between init and the first load is not silently lost.
         forwardPrivacySettings()
 
+        // Covers the lazy-init path where network-level initialize() never saw an
+        // app_id and the real SDK init happens here on the first load.
+        forwardMediationInfo()
+
         if VelocityAds.isInitialized() {
             completion(true)
             return
@@ -135,6 +139,28 @@ extension VelocityAdsMaxAdapter {
         }
         #endif
         VelocityAds.initSDK(request, delegate: bridge)
+    }
+
+    // MARK: - Mediation info
+
+    /// One-shot forwarding of the mediation environment (MAX) to the Velocity SDK.
+    ///
+    /// Executed at most once per process — the values (mediation name, adapter
+    /// version, AppLovin SDK version) never change mid-session. The `static let`
+    /// closure gives thread-safe once semantics for free.
+    private static let mediationInfoForwardingToken: Void = {
+        VelocityAdsMediationBridge.setMediationInfo(
+            name: velocityAdsMediationName,
+            adapterVersion: velocityAdsMaxAdapterVersion,
+            sdkVersion: ALSdk.version()
+        )
+    }()
+
+    /// Reports the mediation environment to the Velocity SDK so it is attached
+    /// to every ad request and analytics event. Safe to call from any adapter
+    /// entry point; only the first call has an effect.
+    func forwardMediationInfo() {
+        _ = VelocityAdsMaxAdapter.mediationInfoForwardingToken
     }
 
     // MARK: - Privacy helpers
