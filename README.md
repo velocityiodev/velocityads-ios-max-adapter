@@ -55,10 +55,7 @@ pod install
 The adapter declares its own SPM dependencies on `AppLovinSDK` and `VelocityAdsSDK`, so they are pulled in automatically.
 
 > **Local development**  
-> To test against a local copy of the Velocity SDK, replace the `VelocityAdsSDK` dependency in `Package.swift` with:
-> ```swift
-> .package(path: "../velocityads-ios-sdk-internal")
-> ```
+> To test against a local copy of the Velocity SDK, replace the `VelocityAdsSDK` dependency in `Package.swift` with a path dependency pointing to your local Velocity Ads iOS SDK checkout.
 
 ## MAX dashboard setup
 
@@ -101,7 +98,7 @@ At initialisation the adapter reports the mediation environment to the Velocity 
 | Adapter version | This adapter's version (e.g. `0.10.0.0`) |
 | Mediation SDK version | The AppLovin SDK version (`ALSdk.version()`) |
 
-The Velocity SDK attaches these values to every ad request (`mobileMetadata`) and every analytics event, so traffic can be sliced by mediation platform, adapter version, and AppLovin SDK version. Forwarding happens once per process — the values never change mid-session.
+The Velocity SDK attaches these values to every ad request and every analytics event, so traffic can be sliced by mediation platform, adapter version, and AppLovin SDK version. Forwarding happens once per process — the values never change mid-session.
 
 ## How it works
 
