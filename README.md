@@ -145,3 +145,84 @@ VelocityAdsMaxAdapter          (ALMediationAdapter + MAInterstitialAdapter
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
+
+---
+
+## Multi-mediation naming conventions
+
+Velocity Ads ships adapters for several mediation platforms (MAX, GAM, LevelPlay, and more). The naming scheme below is **fixed** so adding a new platform never requires renaming existing artifacts:
+
+### Two adapter families (never collide)
+
+| Family | Purpose | When |
+|---|---|---|
+| **Outbound** | Velocity Ads SDK embedded into another platform's mediation | Now (MAX, GAM, LevelPlay…) |
+| **Inbound** (reserved) | Other networks embedded into a future Velocity Ads mediation platform | Future |
+
+### iOS pod / SPM names
+
+Outbound adapters use the class name registered in the mediation dashboard as the pod/package name:
+
+| Adapter | Pod / SPM | Podspec `s.version` | Git tag (SPM) |
+|---|---|---|---|
+| MAX | `VelocityAdsMaxAdapter` | 4 segments (`0.10.0.0`) | 3 segments (`0.10.0`) |
+| GAM (future) | `VelocityAdsGamAdapter` | 4 segments | 3 segments |
+| LevelPlay (future) | `VelocityAdsLevelPlayAdapter` | 4 segments | 3 segments |
+
+The 4-segment CocoaPods version carries the full `<sdkMajor>.<sdkMinor>.<sdkPatch>.<adapterBuild>`. SPM requires a 3-segment tag, so the git tag is the first three segments.
+
+### Android Maven coordinates
+
+| Family | Group ID | Artifact ID pattern | Example |
+|---|---|---|---|
+| Outbound | `io.velocity` | `<mediation>-mediation` | `io.velocity:max-mediation` |
+| Inbound (reserved) | `io.velocity.mediation` | `<network>-adapter` | `io.velocity.mediation:meta-adapter` |
+
+### Mediation name string
+
+Each adapter hard-codes a short, lowercase token via `VelocityAdsMediationBridge.setMediationInfo(name:…)`. This string is intentionally a free string owned by the adapter repo (not an SDK enum), so adding a new platform never requires an SDK release:
+
+| Adapter | Mediation name string |
+|---|---|
+| MAX | `"max"` |
+| GAM (future) | `"gam"` |
+| LevelPlay (future) | `"levelplay"` |
+
+### Repository names
+
+Repo names follow the code, not the artifact: `velocityads-{android,ios}-<mediation>-adapter`. The mediation token is the product name, not the company name (`max`, not `applovin`).
+
+---
+
+## Release process
+
+> **SDK-first requirement**: the `velocityads-ios-sdk` `0.10.0` tag must exist on the public repo and `VelocityAdsSDK 0.10.0` must be on CocoaPods trunk before this adapter can be released. CI and `pod spec lint` will fail until then.
+
+### Prerequisites
+
+Set the following secrets at the **`velocityiodev` org level** (shared automatically with all adapter repos):
+
+| Secret | Purpose |
+|---|---|
+| `GPG_PRIVATE_KEY` | GPG private key for git tag signing (armored) |
+| `GPG_PASSPHRASE` | Passphrase for `GPG_PRIVATE_KEY` (empty string if none) |
+| `GPG_TAGGER_NAME` | Display name for signed git tags |
+| `GPG_TAGGER_EMAIL` | Email for signed git tags |
+| `GPG_SIGNING_KEY_ID` | Full-length GPG key fingerprint for tag signing |
+| `COCOAPODS_TRUNK_TOKEN` | CocoaPods trunk session token — keep alive with the `cocoapods-keepalive.yml` workflow |
+
+### Steps
+
+1. On a release branch (`release/<version>`, e.g. `release/0.10.0.0`):
+   - Bump `velocityAdsMaxAdapterVersion` in `Sources/VelocityAdsMaxAdapter/AdapterVersion.swift`.
+   - Bump `s.version` in `VelocityAdsMaxAdapter.podspec`.
+   - Add a `## <version>` entry to `CHANGELOG.md`.
+2. Push the branch and open a draft PR for review.
+3. **After the Velocity SDK tag and CocoaPods pod are published**, go to **Actions → Publish Adapter** and click **Run workflow**:
+   - **Branch**: your release branch.
+   - **Version**: the 4-segment version, e.g. `0.10.0.0`.
+   - **Dry run**: `true` to validate everything without creating the tag or pushing to trunk; `false` for the real release.
+4. If the dry run passes, re-run with **Dry run = false**.
+5. Merge the release PR after the workflow succeeds.
+
+The workflow creates a GPG-signed 3-segment git tag (e.g. `0.10.0`), a GitHub Release with CHANGELOG notes and SPM/CocoaPods install snippets, and pushes the podspec to CocoaPods trunk.
