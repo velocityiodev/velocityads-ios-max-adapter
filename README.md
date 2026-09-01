@@ -148,52 +148,6 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 ---
 
-## Multi-mediation naming conventions
-
-Velocity Ads ships adapters for several mediation platforms (MAX, GAM, LevelPlay, and more). The naming scheme below is **fixed** so adding a new platform never requires renaming existing artifacts:
-
-### Two adapter families (never collide)
-
-| Family | Purpose | When |
-|---|---|---|
-| **Outbound** | Velocity Ads SDK embedded into another platform's mediation | Now (MAX, GAM, LevelPlay…) |
-| **Inbound** (reserved) | Other networks embedded into a future Velocity Ads mediation platform | Future |
-
-### iOS pod / SPM names
-
-Outbound adapters use the class name registered in the mediation dashboard as the pod/package name:
-
-| Adapter | Pod / SPM | Podspec `s.version` | Git tag (SPM) |
-|---|---|---|---|
-| MAX | `VelocityAdsMaxAdapter` | 4 segments (`0.10.0.0`) | 3 segments (`0.10.0`) |
-| GAM (future) | `VelocityAdsGamAdapter` | 4 segments | 3 segments |
-| LevelPlay (future) | `VelocityAdsLevelPlayAdapter` | 4 segments | 3 segments |
-
-The 4-segment CocoaPods version carries the full `<sdkMajor>.<sdkMinor>.<sdkPatch>.<adapterBuild>`. SPM requires a 3-segment tag, so the git tag is the first three segments.
-
-### Android Maven coordinates
-
-| Family | Group ID | Artifact ID pattern | Example |
-|---|---|---|---|
-| Outbound | `io.velocity` | `<mediation>-mediation` | `io.velocity:max-mediation` |
-| Inbound (reserved) | `io.velocity.mediation` | `<network>-adapter` | `io.velocity.mediation:meta-adapter` |
-
-### Mediation name string
-
-Each adapter hard-codes a short, lowercase token via `VelocityAdsMediationBridge.setMediationInfo(name:…)`. This string is intentionally a free string owned by the adapter repo (not an SDK enum), so adding a new platform never requires an SDK release:
-
-| Adapter | Mediation name string |
-|---|---|
-| MAX | `"max"` |
-| GAM (future) | `"gam"` |
-| LevelPlay (future) | `"levelplay"` |
-
-### Repository names
-
-Repo names follow the code, not the artifact: `velocityads-{android,ios}-<mediation>-adapter`. The mediation token is the product name, not the company name (`max`, not `applovin`).
-
----
-
 ## Release process
 
 > **SDK-first requirement**: the `velocityads-ios-sdk` `0.10.0` tag must exist on the public repo and `VelocityAdsSDK 0.10.0` must be on CocoaPods trunk before this adapter can be released. CI and `pod spec lint` will fail until then.
