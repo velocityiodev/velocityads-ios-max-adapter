@@ -96,13 +96,21 @@ jobs:
       - name: Duplicate tag guard
         run: |
           set -euo pipefail
-          # SPM tags use the 3-segment prefix (SPM requirement).
-          TAG=$(echo "$VERSION" | cut -d. -f1-3)
-          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
-            echo "❌ Tag $TAG already exists on origin. Did you forget to bump the version?"
+          # CocoaPods uses the 4-segment tag; SPM uses the encoded integer tag.
+          # Check both so a partial re-run cannot create a duplicate.
+          IFS='.' read -r A B C D <<< "$VERSION"
+          ENCODED=$(printf "%d%02d%02d%02d" "$A" "$B" "$C" "$D" | sed 's/^0*//')
+          ENCODED="${ENCODED:-0}"
+          SPM_TAG="${ENCODED}.0.0"
+          if git ls-remote --tags origin | grep -q "refs/tags/${VERSION}$"; then
+            echo "❌ Tag $VERSION already exists on origin. Did you forget to bump the version?"
             exit 1
           fi
-          echo "✅ Tag $TAG does not yet exist"
+          if git ls-remote --tags origin | grep -q "refs/tags/${SPM_TAG}$"; then
+            echo "❌ Encoded SPM tag $SPM_TAG already exists on origin."
+            exit 1
+          fi
+          echo "✅ Tags $VERSION and $SPM_TAG do not yet exist"
 
   # ---------------------------------------------------------------------------
   # Job 2: Test
@@ -199,7 +207,8 @@ jobs:
   # Job 4: Tag, GitHub Release, and CocoaPods push
   # Skipped on dry runs.
   # The pod is source-based: tagging the repo IS the release.
-  # SPM consumers resolve from the 3-segment tag automatically.
+  # Two tags are created: the 4-segment tag for CocoaPods, and an encoded
+  # integer SPM tag (SPM only accepts 3-segment semver).
   # ---------------------------------------------------------------------------
   tag-and-release:
     name: Tag and Release
@@ -258,7 +267,7 @@ jobs:
           echo "$GPG_PRIVATE_KEY" | GNUPGHOME="$GNUPGHOME" gpg --batch \
             --passphrase "${GPG_PASSPHRASE:-}" --import
 
-      - name: Create and push tag
+      - name: Create and push tags
         env:
           GPG_TAGGER_NAME: ${{ secrets.GPG_TAGGER_NAME }}
           GPG_TAGGER_EMAIL: ${{ secrets.GPG_TAGGER_EMAIL }}
@@ -269,14 +278,32 @@ jobs:
           git config user.email "${GPG_TAGGER_EMAIL}"
           git config user.signingkey "${GPG_SIGNING_KEY_ID}"
           git config tag.gpgsign true
-          # SPM requires 3-segment tags; the 4th segment is the adapter-build bump.
-          TAG=$(echo "$VERSION" | cut -d. -f1-3)
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "⚠️ Tag $TAG already exists — skipping tag creation"
+
+          # 4-segment tag: used by CocoaPods trunk and the GitHub Release anchor.
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "⚠️ Tag $VERSION already exists — skipping"
           else
-            git tag -s "$TAG" -m "$TAG"
-            git push origin "$TAG"
-            echo "✅ Pushed tag $TAG"
+            git tag -s "$VERSION" -m "$VERSION"
+            git push origin "$VERSION"
+            echo "✅ Pushed tag $VERSION"
+          fi
+
+          # Encoded SPM tag: SPM only accepts 3-segment semver.
+          # Encoding: each segment zero-padded to 2 digits, concatenated, leading zeros stripped.
+          # e.g.  0.10.0.0 → 00100000 → 100000 → 100000.0.0
+          #       0.10.0.1 → 00100001 → 100001 → 100001.0.0
+          #       1.0.0.0  → 01000000 → 1000000 → 1000000.0.0
+          IFS='.' read -r A B C D <<< "$VERSION"
+          ENCODED=$(printf "%d%02d%02d%02d" "$A" "$B" "$C" "$D" | sed 's/^0*//')
+          ENCODED="${ENCODED:-0}"
+          SPM_TAG="${ENCODED}.0.0"
+          echo "SPM_TAG=$SPM_TAG" >> "$GITHUB_ENV"
+          if git rev-parse "$SPM_TAG" >/dev/null 2>&1; then
+            echo "⚠️ Encoded SPM tag $SPM_TAG already exists — skipping"
+          else
+            git tag -s "$SPM_TAG" -m "SPM tag for adapter $VERSION"
+            git push origin "$SPM_TAG"
+            echo "✅ Pushed encoded SPM tag $SPM_TAG"
           fi
 
       - name: Extract CHANGELOG entry for this version
@@ -292,20 +319,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG=$(echo "$VERSION" | cut -d. -f1-3)
           TITLE="${{ env.ADAPTER_DISPLAY_NAME }} ${VERSION}"
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           {
             echo "## ${{ env.ADAPTER_DISPLAY_NAME }} ${VERSION}"
             echo ""
             echo "### Swift Package Manager"
-            echo '```swift'
-            echo ".package(url: \"${REPO_URL}\", .upToNextPatch(from: \"${TAG}\"))"
+            echo ""
+            echo "Set the Dependency Rule to **Exact Version** and enter the encoded tag:"
             echo '```'
+            echo "${SPM_TAG}"
+            echo '```'
+            echo "Or in \`Package.swift\`:"
+            echo '```swift'
+            echo ".package(url: \"${REPO_URL}\", exact: \"${SPM_TAG}\")"
+            echo '```'
+            echo ""
+            echo "> Encoding: adapter \`${VERSION}\` → \`${SPM_TAG}\` (each segment zero-padded to 2 digits, concatenated)."
             echo ""
             echo "### CocoaPods"
             echo '```ruby'
-            echo "pod '${{ env.PACKAGE_SCHEME }}', '~> ${TAG}'"
+            echo "pod '${{ env.PACKAGE_SCHEME }}', '${VERSION}'"
             echo '```'
             echo ""
             echo "### What's changed"
@@ -313,12 +347,12 @@ jobs:
             cat /tmp/release-notes.md
             echo ""
             echo "### Links"
-            echo "- [CHANGELOG](${REPO_URL}/blob/${TAG}/CHANGELOG.md)"
+            echo "- [CHANGELOG](${REPO_URL}/blob/${VERSION}/CHANGELOG.md)"
           } > /tmp/gh-release-notes.md
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "⚠️ GitHub Release $TAG already exists — skipping"
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "⚠️ GitHub Release $VERSION already exists — skipping"
           else
-            gh release create "$TAG" \
+            gh release create "$VERSION" \
               --title "$TITLE" \
               --notes-file /tmp/gh-release-notes.md
           fi

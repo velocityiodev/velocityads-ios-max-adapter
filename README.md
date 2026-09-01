@@ -32,8 +32,6 @@ pod 'VelocityAdsSDK',        '~> 0.10.0'
 pod 'VelocityAdsMaxAdapter', '0.10.0.0'
 ```
 
-> The adapter pod version follows the MAX 4-segment convention (`0.10.0.0` = SDK semver + adapter build); its git release tag is the 3-segment prefix (`0.10.0`).
-
 Then run:
 
 ```bash
@@ -42,6 +40,17 @@ pod install
 
 ### Swift Package Manager
 
+SPM requires 3-segment `major.minor.patch` versions, but adapter versions have 4 segments (`A.B.C.D`).
+Tags are therefore **encoded** as integers: each segment is zero-padded to 2 digits and concatenated.
+
+| Adapter version | Encoded SPM tag |
+|---|---|
+| `0.10.0.0` | `100000.0.0` |
+| `0.10.0.1` | `100001.0.0` |
+| `1.0.0.0`  | `1000000.0.0` |
+
+Formula: `A` `BB` `CC` `DD` (each segment 2 digits, leading zeros on the whole number stripped) → `N.0.0`.
+
 1. In Xcode, go to **File → Add Package Dependencies…**
 2. Enter the adapter repository URL:
 
@@ -49,7 +58,7 @@ pod install
    https://github.com/velocityiodev/velocityads-ios-max-adapter
    ```
 
-3. Select **Up to Next Major Version** from `0.10.0` (release tags use 3-segment semver).
+3. Set the Dependency Rule to **Exact Version** and enter the encoded tag from the [Releases](https://github.com/velocityiodev/velocityads-ios-max-adapter/releases) page (e.g. `100000.0.0` for adapter `0.10.0.0`).
 4. Add `VelocityAdsMaxAdapter` to your app target.
 
 The adapter declares its own SPM dependencies on `AppLovinSDK` and `VelocityAdsSDK`, so they are pulled in automatically.
@@ -176,4 +185,4 @@ Set the following secrets at the **`velocityiodev` org level** (shared automatic
 4. If the dry run passes, re-run with **Dry run = false**.
 5. Merge the release PR after the workflow succeeds.
 
-The workflow creates a GPG-signed 3-segment git tag (e.g. `0.10.0`), a GitHub Release with CHANGELOG notes and SPM/CocoaPods install snippets, and pushes the podspec to CocoaPods trunk.
+The workflow creates two GPG-signed git tags: the **4-segment tag** (e.g. `0.10.0.0`) used by CocoaPods, and the **encoded SPM tag** (e.g. `100000.0.0`) used by Swift Package Manager. A GitHub Release is created on the 4-segment tag with CHANGELOG notes and ready-to-paste install snippets. The podspec is pushed to CocoaPods trunk.
