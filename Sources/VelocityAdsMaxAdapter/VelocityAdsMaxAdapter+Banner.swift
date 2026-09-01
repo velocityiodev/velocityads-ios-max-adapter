@@ -76,6 +76,9 @@ extension VelocityAdsMaxAdapter: MAAdViewAdapter {
             ?? scenes.first { $0.activationState == .foregroundInactive }
             ?? scenes.first
         guard let scene else {
+            // UIScreen.main is deprecated on iOS 16+ but not removed; this branch is
+            // only reached when no UIWindowScene is connected at all, which does not
+            // occur on a running device. The scene path above handles all iOS 16+ cases.
             return UIScreen.main.bounds.width
         }
         if let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first {

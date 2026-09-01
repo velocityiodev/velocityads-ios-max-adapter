@@ -19,7 +19,7 @@ final class VelocityRewardedAdapterDelegate: NSObject, VelocityRewardedAdDelegat
     weak var maxDelegate: MARewardedAdapterDelegate?
 
     /// Called after `onAdDismissed` so the owning adapter can release the ad reference.
-    var onDismissed: (() -> Void)?
+    var onDismissed: (@MainActor () -> Void)?
 
     // MARK: - VelocityRewardedAdDelegate / VelocityFullscreenAdDelegate
 

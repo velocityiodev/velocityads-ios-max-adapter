@@ -15,7 +15,7 @@ final class VelocityInterstitialAdapterDelegate: NSObject, VelocityInterstitialA
     weak var maxDelegate: MAInterstitialAdapterDelegate?
 
     /// Called after `onAdDismissed` so the owning adapter can release the ad reference.
-    var onDismissed: (() -> Void)?
+    var onDismissed: (@MainActor () -> Void)?
 
     // MARK: - VelocityInterstitialAdDelegate / VelocityFullscreenAdDelegate
 
