@@ -8,7 +8,6 @@ AppLovin MAX custom-network adapter that wraps the **Velocity Ads iOS SDK** (`Ve
 |---|---|
 | Interstitial | ✓ |
 | Rewarded | ✓ |
-| Native | ✓ |
 | Banner / MREC / Leaderboard | ✓ |
 
 ## Requirements
@@ -116,14 +115,11 @@ AppLovin MAX SDK
       │
       ▼
 VelocityAdsMaxAdapter          (ALMediationAdapter + MAInterstitialAdapter
-      │                          + MARewardedAdapter + MANativeAdAdapter
-      │                          + MAAdViewAdapter)
+      │                          + MARewardedAdapter + MAAdViewAdapter)
       │
       ├── VelocityInterstitialAdapterDelegate   (VelocityInterstitialAdDelegate → MAX)
       ├── VelocityRewardedAdapterDelegate       (VelocityRewardedAdDelegate → MAX)
-      ├── VelocityNativeAdapterDelegate         (VelocityNativeAdDelegate → MAX)
       ├── VelocityBannerAdapterDelegate         (VelocityBannerAdDelegate → MAX)
-      ├── VelocityMaxNativeAd                   (MANativeAd subclass)
       └── VelocityAdsErrorMapper                (VelocityAdsError → MAAdapterError)
 ```
 
@@ -135,12 +131,6 @@ VelocityAdsMaxAdapter          (ALMediationAdapter + MAInterstitialAdapter
 2. On success, the delegate bridge calls `didLoadInterstitialAd()` / `didLoadRewardedAd()`.
 3. MAX calls `showInterstitialAd` / `showRewardedAd` → adapter checks `isReady`, then calls `.show()` on the main thread.
 4. On dismiss, the adapter releases the ad reference.
-
-**Native**
-
-1. MAX calls `loadNativeAd` → adapter creates `VelocityNativeAd`, calls `.load(delegate:)`.
-2. On success, the delegate bridge builds a `VelocityMaxNativeAd` (an `MANativeAd` subclass) from the `NativeAd` data.
-3. When MAX renders the native template, it calls `prepare(forInteractionClickableViews:withContainer:)` on `VelocityMaxNativeAd`, which forwards to `VelocityNativeAd.registerViewForInteraction`.
 
 **Banner / MREC / Leaderboard**
 

@@ -95,17 +95,6 @@ private final class SpyRewardedDelegate: NSObject, MARewardedAdapterDelegate {
     func didRewardUser(with reward: MAReward, extraInfo: [String: Any]?) {}
 }
 
-/// Spy for MANativeAdAdapterDelegate.
-private final class SpyNativeDelegate: NSObject, MANativeAdAdapterDelegate {
-    var failedToLoadError: MAAdapterError?
-
-    func didLoadAd(for nativeAd: MANativeAd, withExtraInfo extraInfo: [String: Any]?) {}
-    func didFailToLoadNativeAdWithError(_ adapterError: MAAdapterError) { failedToLoadError = adapterError }
-    func didDisplayNativeAd(withExtraInfo extraInfo: [String: Any]?) {}
-    func didClickNativeAd() {}
-    func didClickNativeAd(withExtraInfo extraInfo: [String: Any]?) {}
-}
-
 /// Spy for MAAdViewAdapterDelegate.
 private final class SpyAdViewDelegate: NSObject, MAAdViewAdapterDelegate {
     var failedToLoadError: MAAdapterError?
@@ -323,27 +312,6 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
                        "Mid-session do-not-sell opt-out must be forwarded on load")
     }
 
-    func test_loadNativeAd_runsPrivacyForwardingOnEveryLoad() {
-        // Given
-        let adapter = VelocityAdsMaxAdapter()
-        let params = StubResponseParameters(adUnitId: "test-unit")
-        let spy = SpyNativeDelegate()
-
-        // ALPrivacySettings is process-global and cannot be unset once written
-        // (a previous test or run may have set it), so this test only asserts
-        // that the forwarding path executes on the native load entry point.
-        var observed = false
-        VelocityAdsMaxAdapter.privacyForwardingObserverForTesting = { _, _ in
-            observed = true
-        }
-
-        // When
-        adapter.loadNativeAd(for: params, andNotify: spy)
-
-        // Then
-        XCTAssertTrue(observed, "Privacy forwarding must run on every load")
-    }
-
     // MARK: - destroy() lifecycle
 
     func test_destroy_preventsInterstitialLoad_callsDelegateWithInvalidLoadState() {
@@ -378,23 +346,6 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
         XCTAssertEqual(spy.failedToLoadError?.code,
                        MAAdapterError.invalidLoadState.code,
                        "Destroyed adapter must immediately fail rewarded load with invalidLoadState")
-    }
-
-    func test_destroy_preventsNativeLoad_callsDelegateWithInvalidLoadState() {
-        // Given
-        let adapter = VelocityAdsMaxAdapter()
-        adapter.destroy()
-
-        let params = StubResponseParameters(adUnitId: "test-unit")
-        let spy = SpyNativeDelegate()
-
-        // When
-        adapter.loadNativeAd(for: params, andNotify: spy)
-
-        // Then
-        XCTAssertEqual(spy.failedToLoadError?.code,
-                       MAAdapterError.invalidLoadState.code,
-                       "Destroyed adapter must immediately fail native load with invalidLoadState")
     }
 
     func test_destroy_preventsBannerLoad_callsDelegateWithInvalidLoadState() {
@@ -439,21 +390,6 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
 
         // When
         adapter.loadRewardedAd(for: params, andNotify: spy)
-
-        // Then
-        XCTAssertEqual(spy.failedToLoadError?.code,
-                       MAAdapterError.invalidConfiguration.code,
-                       "Empty ad unit ID must fail with invalidConfiguration")
-    }
-
-    func test_loadNativeAd_withEmptyAdUnitId_callsDelegateWithInvalidConfiguration() {
-        // Given
-        let adapter = VelocityAdsMaxAdapter()
-        let params = StubResponseParameters(adUnitId: "")
-        let spy = SpyNativeDelegate()
-
-        // When
-        adapter.loadNativeAd(for: params, andNotify: spy)
 
         // Then
         XCTAssertEqual(spy.failedToLoadError?.code,

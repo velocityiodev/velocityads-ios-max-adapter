@@ -13,12 +13,11 @@ import VelocityAdsSDK
 /// `serverParameters["app_id"]`. Per-placement Velocity ad unit IDs are supplied through
 /// the **Placement ID** field.
 ///
-/// Supported ad formats: Interstitial, Rewarded, Native, Banner / MREC / Leaderboard.
+/// Supported ad formats: Interstitial, Rewarded, Banner / MREC / Leaderboard.
 @objc(VelocityAdsMaxAdapter)
 public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                                            MAInterstitialAdapter,
                                            MARewardedAdapter,
-                                           MANativeAdAdapter,
                                            MAAdViewAdapter {
 
     // MARK: - Private state — interstitial
@@ -30,11 +29,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
 
     private var rewardedAd: VelocityRewardedAd?
     private var rewardedAdDelegate: VelocityRewardedAdapterDelegate?
-
-    // MARK: - Private state — native
-
-    private var nativeAd: VelocityNativeAd?
-    private var nativeAdDelegate: VelocityNativeAdapterDelegate?
 
     // MARK: - Private state — banner
 
@@ -153,10 +147,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         bannerAd = nil
         bannerAdView = nil
         bannerAdDelegate = nil
-
-        // MAX guarantees destroy() is called on the main thread. assumeIsolated
-        // satisfies the compiler and traps in debug if that contract is broken.
-        MainActor.assumeIsolated { tearDownNativeAd() }
     }
 
     // MARK: - MAInterstitialAdapter
@@ -311,50 +301,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
         }
     }
 
-    // MARK: - MANativeAdAdapter
-
-    public func loadNativeAd(
-        for parameters: MAAdapterResponseParameters,
-        andNotify delegate: MANativeAdAdapterDelegate
-    ) {
-        runOnMainNow { [weak self] in
-            guard let self, !self.isDestroyed else {
-                delegate.didFailToLoadNativeAdWithError(MAAdapterError.invalidLoadState)
-                return
-            }
-
-            let adUnitId = parameters.thirdPartyAdPlacementIdentifier
-            guard !adUnitId.isEmpty else {
-                delegate.didFailToLoadNativeAdWithError(MAAdapterError.invalidConfiguration)
-                return
-            }
-
-            self.ensureInitialized(with: parameters) { [weak self] initialized in
-                guard let self, !self.isDestroyed else {
-                    delegate.didFailToLoadNativeAdWithError(MAAdapterError.invalidLoadState)
-                    return
-                }
-                guard initialized else {
-                    delegate.didFailToLoadNativeAdWithError(MAAdapterError.notInitialized)
-                    return
-                }
-
-                self.tearDownNativeAd()
-
-                let adDelegate = VelocityNativeAdapterDelegate()
-                adDelegate.maxDelegate = delegate
-
-                let request = VelocityNativeAdRequest.Builder(adUnitId: adUnitId).build()
-                let ad = VelocityNativeAd(request)
-
-                self.nativeAd = ad
-                self.nativeAdDelegate = adDelegate
-
-                ad.load(delegate: adDelegate)
-            }
-        }
-    }
-
     // MARK: - MAAdViewAdapter
 
     public func loadAdViewAd(
@@ -450,21 +396,6 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter,
                 MainActor.assumeIsolated(block)
             }
         }
-    }
-
-    // MARK: - Native teardown
-
-    /// Tears down the current native ad: marks the `MANativeAd` wrapper as
-    /// destroyed first so `prepare(forInteractionClickableViews:)` returns
-    /// `false` if MAX re-invokes it on the now-dead ad, then destroys the
-    /// Velocity ad and releases both references. Shared by `destroy()` and the
-    /// re-load path in `loadNativeAd` so the two cannot drift.
-    @MainActor
-    private func tearDownNativeAd() {
-        nativeAdDelegate?.currentMaxNativeAd?.isAdDestroyed = true
-        nativeAd?.destroy()
-        nativeAd = nil
-        nativeAdDelegate = nil
     }
 
 }
