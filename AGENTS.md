@@ -47,20 +47,25 @@ This package is the official AppLovin MAX **custom-network adapter** that bridge
 ```
 velocityads-ios-max-adapter/
 ├── Sources/VelocityAdsMaxAdapter/
-│   ├── AdapterVersion.swift               # Version constant: velocityAdsMaxAdapterVersion
-│   ├── VelocityAdsMaxAdapter.swift        # Main adapter class (ALMediationAdapter)
-│   ├── VelocityAdsMaxAdapter+Init.swift   # Initialization logic
-│   ├── VelocityAdsMaxAdapter+Interstitial.swift
-│   ├── VelocityAdsMaxAdapter+Rewarded.swift
-│   ├── VelocityAdsMaxAdapter+Native.swift
-│   └── VelocityAdsMaxAdapter+Banner.swift
-├── Tests/VelocityAdsMaxAdapterTests/      # XCTest suite
-├── Package.swift                          # SPM manifest
-├── VelocityAdsMaxAdapter.podspec          # CocoaPods podspec
+│   ├── AdapterVersion.swift                    # Version constant: velocityAdsMaxAdapterVersion
+│   ├── VelocityAdsMaxAdapter.swift             # Core adapter: ALMediationAdapter, shared state, init, destroy
+│   ├── VelocityAdsMaxAdapter+Init.swift        # Init coalescing and privacy forwarding
+│   ├── VelocityAdsMaxAdapter+Interstitial.swift # MAInterstitialAdapter conformance
+│   ├── VelocityAdsMaxAdapter+Rewarded.swift    # MARewardedAdapter conformance
+│   ├── VelocityAdsMaxAdapter+Banner.swift      # MAAdViewAdapter conformance + banner helpers
+│   ├── VelocityAdsMaxAdapter+BannerSize.swift  # Banner size resolution from MAX parameters
+│   ├── VelocityInterstitialAdapterDelegate.swift
+│   ├── VelocityRewardedAdapterDelegate.swift
+│   ├── VelocityBannerAdapterDelegate.swift
+│   ├── InitCoalescer.swift                     # Coalesces concurrent init attempts
+│   └── InFlightInitPoller.swift                # Polls for in-progress SDK init
+├── Tests/VelocityAdsMaxAdapterTests/           # XCTest suite
+├── Package.swift                               # SPM manifest
+├── VelocityAdsMaxAdapter.podspec               # CocoaPods podspec
 └── .github/workflows/
-    ├── unit-tests.yml                     # CI: SwiftLint + xcodebuild simulator tests on PR/push
-    ├── publish-adapter.yml                # Release: validate → test → pod lint → tag + GitHub Release + trunk push
-    └── cocoapods-keepalive.yml            # Scheduled: keeps CocoaPods trunk token alive
+    ├── unit-tests.yml                          # CI: SwiftLint + xcodebuild simulator tests on PR/push
+    ├── publish-adapter.yml                     # Release: validate → test → pod lint → tag + GitHub Release + trunk push
+    └── cocoapods-keepalive.yml                 # Scheduled: keeps CocoaPods trunk token alive
 ```
 
 ---
