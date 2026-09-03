@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
   s.summary          = 'AppLovin MAX custom-network adapter for the Velocity Ads iOS SDK.'
   s.description      = <<-DESC
     VelocityAdsMaxAdapter bridges the Velocity Ads iOS SDK into the AppLovin MAX
-    mediation waterfall, supporting interstitial, rewarded, native, and
+    mediation waterfall, supporting interstitial, rewarded, and
     banner / MREC / leaderboard ad formats.
   DESC
 
@@ -12,11 +12,13 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'Apache-2.0', :file => 'LICENSE' }
   s.author           = { 'Velocity Ads' => 'sdk@velocityads.io' }
 
-  # Git tags use 3-segment semver (an SPM requirement); the pod version carries
-  # the 4th MAX adapter-build segment, so the tag is derived from its prefix.
+  # Both the CocoaPods release tag and the pod version are the full 4-segment
+  # version — the release workflow creates a 4-segment git tag (e.g. 0.10.0.0)
+  # for CocoaPods. (The separate encoded SPM tag is only for Swift Package Manager,
+  # which cannot parse 4-segment versions; CocoaPods never uses it.)
   s.source           = {
     :git => 'https://github.com/velocityiodev/velocityads-ios-max-adapter.git',
-    :tag => s.version.to_s.split('.')[0..2].join('.')
+    :tag => s.version.to_s
   }
 
   s.platform         = :ios, '13.0'

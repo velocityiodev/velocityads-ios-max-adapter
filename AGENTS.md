@@ -86,7 +86,10 @@ Do not rename this class — it is a hard-coded string in every publisher's MAX 
 
 Version source of truth: `velocityAdsMaxAdapterVersion` in `Sources/VelocityAdsMaxAdapter/AdapterVersion.swift`.
 
-The podspec `s.version` must always match. The git tag (used by SPM) is the 3-segment prefix — e.g. for version `0.10.0.0` the tag is `0.10.0`.
+The podspec `s.version` must always match. The release workflow creates **two** git tags per release:
+
+- The **4-segment tag** (e.g. `0.10.0.0`) — used by CocoaPods (`s.source[:tag]` is the full 4-segment `s.version`) and as the GitHub Release anchor.
+- The **encoded SPM tag** (e.g. `100000.0.0`) — Swift Package Manager only accepts 3-segment semver, so each of the four segments is zero-padded to 2 digits and concatenated (`0.10.0.0` → `00100000` → `100000` → `100000.0.0`).
 
 When bumping the version, update **both** `AdapterVersion.swift` and `VelocityAdsMaxAdapter.podspec` together.
 
