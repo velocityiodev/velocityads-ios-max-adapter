@@ -135,7 +135,7 @@ VelocityAdsMaxAdapter          (ALMediationAdapter + MAInterstitialAdapter
 **Banner / MREC / Leaderboard**
 
 1. MAX calls `loadAdViewAd(for:adFormat:andNotify:)` → adapter resolves size via `resolveBannerSize(...)`: adaptive sizing is gated on the `adaptive_banner` server parameter (boolean), using the `adaptive_banner_width` extra param when present or falling back to the screen width; otherwise the size comes from `adFormat`. It then creates a `VelocityBannerAdView` and `VelocityBannerAd` and calls `.load(bannerView:delegate:)`.
-2. On success, `VelocityBannerAdapterDelegate` calls `didLoadAd(forAdView:)` with the banner view.
+2. On success, the Velocity SDK calls `onAdLoaded(ad:)` on the delegate bridge, which forwards to MAX's `didLoadAd(forAdView:)` with the banner view.
 3. MAX places the returned view into its ad container; impression and click callbacks flow through the delegate bridge.
 
 ## License
