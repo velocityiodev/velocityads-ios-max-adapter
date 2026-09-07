@@ -56,6 +56,19 @@ jobs:
           fi
           echo "✅ Version format valid: $VERSION"
 
+      - name: Enforce release branch
+        run: |
+          set -euo pipefail
+          EXPECTED_BRANCH="release/${VERSION}"
+          if [ "${GITHUB_REF_NAME}" != "$EXPECTED_BRANCH" ]; then
+            echo "❌ Releases must be dispatched from branch '$EXPECTED_BRANCH'"
+            echo "   Got: '${GITHUB_REF_NAME}'"
+            exit 1
+          fi
+          echo "✅ Dispatch branch: $EXPECTED_BRANCH"
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
       - name: Check AdapterVersion.swift
         run: |
           set -euo pipefail
@@ -216,6 +229,9 @@ jobs:
     runs-on: macos-26
     needs: [test, pod-lint]
     if: ${{ !inputs.dry_run }}
+    # Require a protected GitHub Environment with required reviewers configured
+    # in Settings → Environments → production-release before the first real publish.
+    environment: production-release
     timeout-minutes: 20
     permissions:
       contents: write
@@ -242,9 +258,13 @@ jobs:
             echo "❌ Missing required secrets:$missing"
             exit 1
           fi
+          if [ -z "${GPG_PASSPHRASE:-}" ]; then
+            echo "⚠️ GPG_PASSPHRASE is empty — OK only if the signing key has no passphrase"
+          fi
           echo "✅ All required secrets present"
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_TAGGER_NAME: ${{ secrets.GPG_TAGGER_NAME }}
           GPG_TAGGER_EMAIL: ${{ secrets.GPG_TAGGER_EMAIL }}
           GPG_SIGNING_KEY_ID: ${{ secrets.GPG_SIGNING_KEY_ID }}

@@ -20,9 +20,6 @@ let package = Package(
             url: "https://github.com/AppLovin/AppLovin-MAX-Swift-Package",
             .upToNextMajor(from: "13.0.0")
         ),
-        // Production VelocityAdsSDK distribution.
-        // For local development, replace with:
-        //   .package(path: "../velocityads-ios-sdk-internal")
         .package(
             url: "https://github.com/velocityiodev/velocityads-ios-sdk",
             .upToNextMinor(from: "0.10.0")

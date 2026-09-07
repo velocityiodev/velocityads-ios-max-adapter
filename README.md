@@ -62,9 +62,6 @@ Formula: `A` `BB` `CC` `DD` (each segment 2 digits, leading zeros on the whole n
 
 The adapter declares its own SPM dependencies on `AppLovinSDK` and `VelocityAdsSDK`, so they are pulled in automatically.
 
-> **Local development**  
-> To test against a local copy of the Velocity SDK, replace the `VelocityAdsSDK` dependency in `Package.swift` with a path dependency pointing to your local Velocity Ads iOS SDK checkout.
-
 ## MAX dashboard setup
 
 1. Log in to the [AppLovin MAX dashboard](https://dash.applovin.com).
@@ -82,6 +79,7 @@ The adapter declares its own SPM dependencies on `AppLovinSDK` and `VelocityAdsS
 6. Open the **Ad Units** for your app and add a waterfall line for **Velocity Ads**.
 7. In the line's settings, set the **App ID** field to your Velocity Ads app key.
    MAX delivers this value to the adapter as `serverParameters["app_id"]`.
+   Use **one Velocity app key per application process** — configuring different App ID values across placements in the same app is unsupported.
 8. Set the **Placement ID** field to the Velocity Ads ad unit ID for that placement.
 9. Activate the line and publish.
 
@@ -169,10 +167,11 @@ Set the following secrets at the **`velocityiodev` org level** (shared automatic
    - Add a `## <version>` entry to `CHANGELOG.md`.
 2. Push the branch and open a draft PR for review.
 3. **After the Velocity SDK tag and CocoaPods pod are published**, go to **Actions → Publish Adapter** and click **Run workflow**:
-   - **Branch**: your release branch.
+   - **Branch**: your release branch (`release/<version>` — enforced by the workflow).
    - **Version**: the 4-segment version, e.g. `0.10.0.0`.
    - **Dry run**: `true` to validate everything without creating the tag or pushing to trunk; `false` for the real release.
 4. If the dry run passes, re-run with **Dry run = false**.
+   Real publishes require approval from the GitHub Environment **`production-release`** (configure required reviewers under **Settings → Environments** before the first release).
 5. Merge the release PR after the workflow succeeds.
 
 The workflow creates two GPG-signed git tags: the **4-segment tag** (e.g. `0.10.0.0`) used by CocoaPods, and the **encoded SPM tag** (e.g. `100000.0.0`) used by Swift Package Manager. A GitHub Release is created on the 4-segment tag with CHANGELOG notes and ready-to-paste install snippets. The podspec is pushed to CocoaPods trunk.
