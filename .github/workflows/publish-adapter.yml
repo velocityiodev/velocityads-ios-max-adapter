@@ -85,7 +85,8 @@ jobs:
       - name: Check podspec s.version
         run: |
           set -euo pipefail
-          POD_VERSION=$(grep -E '^\s*s\.version\s*=' "$PODSPEC" | grep -Eo '"[^"]+"' | tr -d '"')
+          # Podspecs commonly use single quotes (Ruby); accept either quote style.
+          POD_VERSION=$(grep -E '^\s*s\.version\s*=' "$PODSPEC" | grep -Eo "['\"][^'\"]+['\"]" | tr -d "'\"")
           if [ "$POD_VERSION" != "$VERSION" ]; then
             echo "❌ Podspec version mismatch"
             echo "   Expected : $VERSION"
