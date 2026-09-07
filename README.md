@@ -94,18 +94,6 @@ The adapter forwards the device's AppLovin privacy state to the Velocity SDK **b
 
 A signal that has not been set is not forwarded, and the Velocity SDK retains its previous value. Forwarding on every load means mid-session consent changes propagate on the next request.
 
-## Mediation environment reporting
-
-At initialisation the adapter reports the mediation environment to the Velocity SDK via `VelocityAdsMediationBridge.setMediationInfo(name:adapterVersion:sdkVersion:)`:
-
-| Field | Value |
-|---|---|
-| Mediation name | `"max"` |
-| Adapter version | This adapter's version (e.g. `0.10.0.0`) |
-| Mediation SDK version | The AppLovin SDK version (`ALSdk.version()`) |
-
-The Velocity SDK attaches these values to every ad request and every analytics event, so traffic can be sliced by mediation platform, adapter version, and AppLovin SDK version. Forwarding happens once per process — the values never change mid-session.
-
 ## How it works
 
 ```
@@ -139,39 +127,3 @@ VelocityAdsMaxAdapter          (ALMediationAdapter + MAInterstitialAdapter
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
-
----
-
-## Release process
-
-> **SDK-first requirement**: the `velocityads-ios-sdk` `0.10.0` tag must exist on the public repo and `VelocityAdsSDK 0.10.0` must be on CocoaPods trunk before this adapter can be released. CI and `pod spec lint` will fail until then.
-
-### Prerequisites
-
-Set the following secrets at the **`velocityiodev` org level** (shared automatically with all adapter repos):
-
-| Secret | Purpose |
-|---|---|
-| `GPG_PRIVATE_KEY` | GPG private key for git tag signing (armored) |
-| `GPG_PASSPHRASE` | Passphrase for `GPG_PRIVATE_KEY` (empty string if none) |
-| `GPG_TAGGER_NAME` | Display name for signed git tags |
-| `GPG_TAGGER_EMAIL` | Email for signed git tags |
-| `GPG_SIGNING_KEY_ID` | Full-length GPG key fingerprint for tag signing |
-| `COCOAPODS_TRUNK_TOKEN` | CocoaPods trunk session token — keep alive with the `cocoapods-keepalive.yml` workflow |
-
-### Steps
-
-1. On a release branch (`release/<version>`, e.g. `release/0.10.0.0`):
-   - Bump `velocityAdsMaxAdapterVersion` in `Sources/VelocityAdsMaxAdapter/AdapterVersion.swift`.
-   - Bump `s.version` in `VelocityAdsMaxAdapter.podspec`.
-   - Add a `## <version>` entry to `CHANGELOG.md`.
-2. Push the branch and open a draft PR for review.
-3. **After the Velocity SDK tag and CocoaPods pod are published**, go to **Actions → Publish Adapter** and click **Run workflow**:
-   - **Branch**: your release branch (`release/<version>` — enforced by the workflow).
-   - **Version**: the 4-segment version, e.g. `0.10.0.0`.
-   - **Dry run**: `true` to validate everything without creating the tag or pushing to trunk; `false` for the real release.
-4. If the dry run passes, re-run with **Dry run = false**.
-   Real publishes require approval from the GitHub Environment **`production-release`** (configure required reviewers under **Settings → Environments** before the first release).
-5. Merge the release PR after the workflow succeeds.
-
-The workflow creates two GPG-signed git tags: the **4-segment tag** (e.g. `0.10.0.0`) used by CocoaPods, and the **encoded SPM tag** (e.g. `100000.0.0`) used by Swift Package Manager. A GitHub Release is created on the 4-segment tag with CHANGELOG notes and ready-to-paste install snippets. The podspec is pushed to CocoaPods trunk.

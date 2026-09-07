@@ -152,9 +152,8 @@ extension VelocityAdsMaxAdapter {
         )
     }()
 
-    /// Reports the mediation environment to the Velocity SDK so it is attached
-    /// to every ad request and analytics event. Safe to call from any adapter
-    /// entry point; only the first call has an effect.
+    /// Reports the mediation environment (MAX) to the Velocity SDK. Safe to call
+    /// from any adapter entry point; only the first call has an effect.
     func forwardMediationInfo() {
         _ = VelocityAdsMaxAdapter.mediationInfoForwardingToken
     }
