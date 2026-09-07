@@ -192,7 +192,9 @@ jobs:
   # ---------------------------------------------------------------------------
   # Job 3: Pod lint
   # Validates the podspec against the real published VelocityAdsSDK and
-  # AppLovinSDK pods. Must pass before tagging so we never tag a broken spec.
+  # AppLovinSDK pods using the local Sources/ tree. Must use `pod lib lint`
+  # (not `pod spec lint`) because the version git tag does not exist yet —
+  # tagging happens in the later tag-and-release job.
   # ---------------------------------------------------------------------------
   pod-lint:
     name: Pod lint
@@ -216,7 +218,7 @@ jobs:
         # our linter should not fail on upstream issues.
         # --skip-tests: we run tests in the test job above; pod lint's test
         # scheme discovery is less reliable than xcodebuild's.
-        run: pod spec lint "${{ env.PODSPEC }}" --allow-warnings --skip-tests
+        run: pod lib lint "${{ env.PODSPEC }}" --allow-warnings --skip-tests
 
   # ---------------------------------------------------------------------------
   # Job 4: Tag, GitHub Release, and CocoaPods push
