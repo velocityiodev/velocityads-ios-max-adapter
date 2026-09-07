@@ -84,7 +84,8 @@ jobs:
       - name: Check CHANGELOG.md top entry
         run: |
           set -euo pipefail
-          TOP_ENTRY=$(grep -m1 '^## ' CHANGELOG.md | sed 's/^## //')
+          # Keep a Changelog: "## [0.10.0.0] - 2026-09-07"
+          TOP_ENTRY=$(grep -m1 '^## \[' CHANGELOG.md | sed -E 's/^## \[([^]]+)\].*/\1/')
           if [ "$TOP_ENTRY" != "$VERSION" ]; then
             echo "❌ CHANGELOG.md top entry mismatch"
             echo "   Expected : $VERSION"
@@ -317,7 +318,8 @@ jobs:
       - name: Extract CHANGELOG entry for this version
         run: |
           set -euo pipefail
-          awk "/^## ${VERSION}/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md > /tmp/release-notes.md
+          # Keep a Changelog: "## [<version>] - <date>"
+          awk "/^## \\[${VERSION}\\]/{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md > /tmp/release-notes.md
           if [ ! -s /tmp/release-notes.md ]; then
             echo "Release $VERSION" > /tmp/release-notes.md
           fi
