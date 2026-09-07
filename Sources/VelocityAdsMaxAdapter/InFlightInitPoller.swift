@@ -29,13 +29,20 @@ enum InFlightInitPoller {
 
     /// Starts polling `isInitialized`. Calls `completion(true)` as soon as the
     /// predicate returns `true`, or `completion(false)` once `timeout` elapses.
+    ///
+    /// Default parameter values cannot reference `@MainActor` statics (they are
+    /// evaluated in a nonisolated context), so `nil` means “use the MainActor
+    /// defaults” and is resolved inside this method.
     static func awaitInitialization(
         isInitialized: @escaping @MainActor () -> Bool,
-        pollInterval: TimeInterval = defaultPollInterval,
-        timeout: TimeInterval = defaultTimeout,
-        schedule: @escaping Scheduler = mainQueueScheduler,
+        pollInterval: TimeInterval? = nil,
+        timeout: TimeInterval? = nil,
+        schedule: Scheduler? = nil,
         completion: @escaping @MainActor (Bool) -> Void
     ) {
+        let pollInterval = pollInterval ?? defaultPollInterval
+        let timeout = timeout ?? defaultTimeout
+        let schedule = schedule ?? mainQueueScheduler
         // Integer poll budget avoids floating-point drift from repeatedly
         // subtracting the interval from the remaining time.
         let totalPolls = pollInterval > 0 ? max(0, Int((timeout / pollInterval).rounded())) : 0
