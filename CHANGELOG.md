@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+* Ad loads whose waterfall entry has no **App ID** now reuse the App ID seen at initialization instead of failing, matching the Android adapter.
+* A second, different App ID observed in the same app process is reported once through the unified logging system (`io.velocityads.max`).
+
 ## [0.10.0.0] - 2026-09-07
 
 ### Added

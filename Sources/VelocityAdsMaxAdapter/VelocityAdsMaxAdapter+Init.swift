@@ -28,6 +28,15 @@ extension VelocityAdsMaxAdapter {
     @MainActor
     private static var activeInitBridge: VelocityAdsInitBridge?
 
+    /// The app key captured from the first App ID sighting, used as a fallback for load-time
+    /// init attempts whose response parameters lack `app_id`. First-wins: Velocity init is
+    /// process-global, so later mismatched App IDs are logged and ignored.
+    @MainActor
+    private(set) static var storedAppKey: String?
+
+    @MainActor
+    private static var appKeyMismatchLogged = false
+
     #if DEBUG
     /// Test-only: replaces the `VelocityAds.initSDK` trigger so unit tests can
     /// drive the coalesced init flow deterministically without network I/O.
@@ -39,13 +48,15 @@ extension VelocityAdsMaxAdapter {
     static var privacyForwardingObserverForTesting: ((_ consent: Bool?, _ doNotSell: Bool?) -> Void)?
 
     /// Test-only: drains and unclaims the shared coalescer and clears all test
-    /// seams so state cannot leak between test cases.
+    /// seams and remembered state so nothing leaks between test cases.
     @MainActor
     static func resetInitStateForTesting() {
         if initCoalescer.isClaimed {
             initCoalescer.complete(with: (.initializedFailure, "test reset"))
         }
         activeInitBridge = nil
+        storedAppKey = nil
+        appKeyMismatchLogged = false
         initSDKRunnerForTesting = nil
         privacyForwardingObserverForTesting = nil
     }
@@ -53,14 +64,34 @@ extension VelocityAdsMaxAdapter {
 
     // MARK: - Init helpers
 
+    /// Reads the Velocity app key MAX delivers from the dashboard's **App ID** field.
+    static func extractAppKey(from serverParameters: [String: Any]) -> String? {
+        (serverParameters["app_id"] as? String)?.nilIfEmpty
+    }
+
+    @MainActor
+    static func rememberAppKey(_ appKey: String) {
+        guard let previous = storedAppKey else {
+            storedAppKey = appKey
+            return
+        }
+        if previous != appKey, !appKeyMismatchLogged {
+            appKeyMismatchLogged = true
+            AdapterLog.warn(
+                "Velocity Ads: multiple App ID values detected. Use one Velocity app key per application process."
+            )
+        }
+    }
+
     /// Ensures the Velocity SDK is initialized before a load proceeds.
     ///
     /// If the SDK is already up, `completion(true)` fires synchronously. Otherwise
-    /// a re-init is attempted (or coalesced onto an in-flight attempt) using the
-    /// same machinery as `initialize(with:completionHandler:)`, and `completion`
-    /// receives the outcome. This covers the case where the original MAX-driven
-    /// init failed transiently (e.g. no connectivity at app launch) but a load
-    /// arrives later when the SDK could now initialize successfully.
+    /// a re-init is attempted (or coalesced onto an in-flight attempt) with the
+    /// `app_id` from the load-time parameters, falling back to the key remembered
+    /// from `initialize(with:completionHandler:)`. This covers both the lazy-init
+    /// contract (no App ID at network level) and transient failures of the
+    /// startup init (e.g. no connectivity at app launch) — the Velocity SDK
+    /// explicitly permits re-init from its FAILED state.
     @MainActor
     func ensureInitialized(
         with parameters: MAAdapterResponseParameters,
@@ -77,7 +108,11 @@ extension VelocityAdsMaxAdapter {
             return
         }
 
-        guard let appKey = (parameters.serverParameters["app_id"] as? String)?.nilIfEmpty else {
+        let loadAppKey = VelocityAdsMaxAdapter.extractAppKey(from: parameters.serverParameters)
+        if let loadAppKey {
+            VelocityAdsMaxAdapter.rememberAppKey(loadAppKey)
+        }
+        guard let appKey = loadAppKey ?? VelocityAdsMaxAdapter.storedAppKey else {
             completion(false)
             return
         }

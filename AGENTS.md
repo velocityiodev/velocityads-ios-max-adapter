@@ -49,6 +49,7 @@ This package is the official AppLovin MAX **custom-network adapter** that bridge
 velocityads-ios-max-adapter/
 ├── Sources/VelocityAdsMaxAdapter/
 │   ├── AdapterVersion.swift                    # Version constant: velocityAdsMaxAdapterVersion
+│   ├── AdapterLog.swift                        # os_log wrapper for adapter warnings
 │   ├── VelocityAdsMaxAdapter.swift             # Core adapter: ALMediationAdapter, shared state, init, destroy
 │   ├── VelocityAdsMaxAdapter+Init.swift        # Init coalescing and privacy forwarding
 │   ├── VelocityAdsMaxAdapter+Interstitial.swift # MAInterstitialAdapter conformance

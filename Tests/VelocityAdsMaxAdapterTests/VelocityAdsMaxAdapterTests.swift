@@ -282,6 +282,51 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
                        "Parked adapter must receive the outcome even after the winner is destroyed")
     }
 
+    // MARK: - Remembered app key
+
+    func test_initialize_remembersAppKeyForLaterLoads() {
+        let adapter = VelocityAdsMaxAdapter()
+        adapter.initialize(with: StubInitParameters(serverParameters: ["app_id": "key-1"])) { _, _ in }
+
+        XCTAssertEqual(VelocityAdsMaxAdapter.storedAppKey, "key-1")
+    }
+
+    func test_rememberAppKey_keepsTheFirstKeyWhenALaterOneDisagrees() {
+        VelocityAdsMaxAdapter.rememberAppKey("key-1")
+        VelocityAdsMaxAdapter.rememberAppKey("key-2")
+        VelocityAdsMaxAdapter.rememberAppKey("key-3")
+
+        XCTAssertEqual(VelocityAdsMaxAdapter.storedAppKey, "key-1")
+    }
+
+    func test_load_withoutAppId_fallsBackToTheRememberedKeyAndRetriesInit() {
+        // Given — the startup init failed (e.g. offline at launch) and a load arrives
+        // whose waterfall entry carries no App ID
+        let adapter = VelocityAdsMaxAdapter()
+        adapter.initialize(with: StubInitParameters(serverParameters: ["app_id": "key-1"])) { _, _ in }
+        failInFlightInit()
+        let spy = SpyInterstitialDelegate()
+
+        // When
+        adapter.loadInterstitialAd(for: StubResponseParameters(adUnitId: "unit", serverParameters: [:]),
+                                   andNotify: spy)
+
+        // Then — a fresh SDK init is attempted with the remembered key instead of failing
+        XCTAssertEqual(capturedInitDelegates.count, 1, "The load must re-attempt init with the remembered key")
+        XCTAssertNil(spy.failedToLoadError, "The load must park on the init instead of failing")
+    }
+
+    func test_load_withoutAnyAppKey_failsWithNotInitialized() {
+        let adapter = VelocityAdsMaxAdapter()
+        let spy = SpyInterstitialDelegate()
+
+        adapter.loadInterstitialAd(for: StubResponseParameters(adUnitId: "unit", serverParameters: [:]),
+                                   andNotify: spy)
+
+        XCTAssertTrue(capturedInitDelegates.isEmpty, "No SDK init may be started without an app key")
+        XCTAssertEqual(spy.failedToLoadError?.code, MAAdapterError.notInitialized.code)
+    }
+
     // MARK: - Privacy forwarding on load
 
     func test_loadInterstitialAd_forwardsCurrentALPrivacySettingsOnLoad() {
