@@ -1,11 +1,5 @@
 # Changelog
 
-## [Unreleased]
-
-### Changed
-
-* Ad units whose waterfall entry has no **App ID** now load using the App ID configured on any other Velocity entry in the app.
-
 ## [0.10.0.0] - 2026-09-07
 
 ### Added
