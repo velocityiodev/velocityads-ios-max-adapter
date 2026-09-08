@@ -72,7 +72,7 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter {
         // initializedUnknown — the adapter is ready but the app key arrives via the
         // per-placement App ID field at load time; ensureInitialized() performs the
         // real SDK init lazily on the first load.
-        guard let appKey = VelocityAdsMaxAdapter.extractAppKey(from: parameters.serverParameters) else {
+        guard let configuredAppKey = VelocityAdsMaxAdapter.extractAppKey(from: parameters.serverParameters) else {
             completionHandler(.initializedUnknown, nil)
             return
         }
@@ -81,7 +81,7 @@ public final class VelocityAdsMaxAdapter: ALMediationAdapter {
         // is a @MainActor protocol. The bridge is created inside the block so its
         // @MainActor initialiser runs on the correct actor.
         runOnMainNow { [weak self] in
-            VelocityAdsMaxAdapter.rememberAppKey(appKey)
+            let appKey = VelocityAdsMaxAdapter.rememberAppKey(configuredAppKey)
             guard let self else {
                 completionHandler(.initializedFailure,
                                   "Velocity Ads adapter was released before initialization completed")

@@ -299,6 +299,22 @@ final class VelocityAdsMaxAdapterTests: XCTestCase {
         XCTAssertEqual(VelocityAdsMaxAdapter.storedAppKey, "key-1")
     }
 
+    func test_load_withMismatchedAppId_initializesWithTheFirstKeySeen() {
+        var capturedAppKeys: [String] = []
+        VelocityAdsMaxAdapter.initSDKRunnerForTesting = { [weak self] request, delegate in
+            capturedAppKeys.append(request.appKey)
+            self?.capturedInitDelegates.append(delegate)
+        }
+        let adapter = VelocityAdsMaxAdapter()
+        adapter.initialize(with: StubInitParameters(serverParameters: ["app_id": "key-1"])) { _, _ in }
+        failInFlightInit()
+
+        adapter.loadInterstitialAd(for: StubResponseParameters(adUnitId: "unit", serverParameters: ["app_id": "key-other"]),
+                                   andNotify: SpyInterstitialDelegate())
+
+        XCTAssertEqual(capturedAppKeys, ["key-1", "key-1"])
+    }
+
     func test_load_withoutAppId_fallsBackToTheRememberedKeyAndRetriesInit() {
         // Given — the startup init failed (e.g. offline at launch) and a load arrives
         // whose waterfall entry carries no App ID

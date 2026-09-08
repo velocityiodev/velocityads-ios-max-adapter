@@ -66,14 +66,18 @@ extension VelocityAdsMaxAdapter {
 
     /// Reads the Velocity app key MAX delivers from the dashboard's **App ID** field.
     static func extractAppKey(from serverParameters: [String: Any]) -> String? {
-        (serverParameters["app_id"] as? String)?.nilIfEmpty
+        guard let appKey = serverParameters["app_id"] as? String, !appKey.isEmpty else { return nil }
+        return appKey
     }
 
+    /// Records `appKey` and returns the key every init attempt must use: the first key ever
+    /// seen. A later, different key is logged once and ignored.
     @MainActor
-    static func rememberAppKey(_ appKey: String) {
+    @discardableResult
+    static func rememberAppKey(_ appKey: String) -> String {
         guard let previous = storedAppKey else {
             storedAppKey = appKey
-            return
+            return appKey
         }
         if previous != appKey, !appKeyMismatchLogged {
             appKeyMismatchLogged = true
@@ -81,6 +85,7 @@ extension VelocityAdsMaxAdapter {
                 "Velocity Ads: multiple App ID values detected. Use one Velocity app key per application process."
             )
         }
+        return previous
     }
 
     /// Ensures the Velocity SDK is initialized before a load proceeds.
@@ -109,10 +114,7 @@ extension VelocityAdsMaxAdapter {
         }
 
         let loadAppKey = VelocityAdsMaxAdapter.extractAppKey(from: parameters.serverParameters)
-        if let loadAppKey {
-            VelocityAdsMaxAdapter.rememberAppKey(loadAppKey)
-        }
-        guard let appKey = loadAppKey ?? VelocityAdsMaxAdapter.storedAppKey else {
+        guard let appKey = loadAppKey.map(VelocityAdsMaxAdapter.rememberAppKey) ?? VelocityAdsMaxAdapter.storedAppKey else {
             completion(false)
             return
         }
