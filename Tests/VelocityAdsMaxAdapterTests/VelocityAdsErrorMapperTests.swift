@@ -35,7 +35,8 @@ final class VelocityAdsErrorMapperTests: XCTestCase {
         (VelocityAdsErrorCode.waterfallLoadFailed, MAAdapterError.internalError),
         (VelocityAdsErrorCode.adDestroyed, MAAdapterError.invalidLoadState),
         (VelocityAdsErrorCode.invalidAdUnitId, MAAdapterError.invalidConfiguration),
-        (VelocityAdsErrorCode.adSpent, MAAdapterError.adExpiredError)
+        (VelocityAdsErrorCode.adSpent, MAAdapterError.adExpiredError),
+        (VelocityAdsErrorCode.mediaUnreachable, MAAdapterError.noFill)
     ]
 
     func test_map_everyKnownCode_mapsToExpectedPrototype() {

@@ -42,6 +42,10 @@ enum VelocityAdsErrorMapper {
             return make(MAAdapterError.badRequest, from: error)
         case VelocityAdsErrorCode.noFill:
             return make(MAAdapterError.noFill, from: error)
+        case VelocityAdsErrorCode.mediaUnreachable:
+            // The ad media cannot be fetched on this device and network; `noFill` lets
+            // the waterfall move on rather than surfacing an adapter fault.
+            return make(MAAdapterError.noFill, from: error)
         case VelocityAdsErrorCode.internalError:
             return make(MAAdapterError.internalError, from: error)
         case VelocityAdsErrorCode.adAlreadyLoaded:
