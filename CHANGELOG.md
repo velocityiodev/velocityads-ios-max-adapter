@@ -4,7 +4,7 @@
 
 ### Changed
 
-* A Velocity load failure caused by unreachable ad media (Velocity SDK error `2013`, `mediaUnreachable`) is now reported to MAX as `noFill` instead of `unspecified`, so the mediation waterfall moves on to the next network rather than treating it as an adapter fault. Requires Velocity Ads iOS SDK 0.11.0 or later to be emitted.
+* Unreachable ad media (Velocity error `2013`) is now reported to MAX as `noFill` so the waterfall moves on.
 
 ## [0.10.0.0] - 2026-09-07
 
