@@ -35,8 +35,14 @@ final class VelocityAdsErrorMapperTests: XCTestCase {
         (VelocityAdsErrorCode.waterfallLoadFailed, MAAdapterError.internalError),
         (VelocityAdsErrorCode.adDestroyed, MAAdapterError.invalidLoadState),
         (VelocityAdsErrorCode.invalidAdUnitId, MAAdapterError.invalidConfiguration),
-        (VelocityAdsErrorCode.adSpent, MAAdapterError.adExpiredError)
+        (VelocityAdsErrorCode.adSpent, MAAdapterError.adExpiredError),
+        // mediaUnreachable: the waterfall should move on, not treat it as an adapter fault.
+        (VelocityAdsErrorMapper.mediaUnreachable, MAAdapterError.noFill)
     ]
+
+    func test_mediaUnreachableLiteral_matchesSdkErrorCode() {
+        XCTAssertEqual(VelocityAdsErrorMapper.mediaUnreachable, 2013)
+    }
 
     func test_map_everyKnownCode_mapsToExpectedPrototype() {
         for (velocityCode, prototype) in Self.expectedMappings {

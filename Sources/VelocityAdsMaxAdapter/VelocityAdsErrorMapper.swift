@@ -4,6 +4,10 @@ import VelocityAdsSDK
 /// Maps `VelocityAdsError` codes to the closest `MAAdapterError` equivalent.
 enum VelocityAdsErrorMapper {
 
+    /// `VelocityAdsErrorCode.mediaUnreachable` (SDK ≥ 0.11.0). Spelled out as a literal so
+    /// the adapter keeps compiling against SDK versions that predate the constant.
+    static let mediaUnreachable = 2013
+
     // MARK: - Public
 
     static func map(_ error: VelocityAdsError) -> MAAdapterError {
@@ -41,6 +45,11 @@ enum VelocityAdsErrorMapper {
         case VelocityAdsErrorCode.invalidAdResponse:
             return make(MAAdapterError.badRequest, from: error)
         case VelocityAdsErrorCode.noFill:
+            return make(MAAdapterError.noFill, from: error)
+        case mediaUnreachable:
+            // The video ad's media cannot be fetched on this device and network, so the
+            // SDK fails the load instead of showing a black screen. `noFill` lets the MAX
+            // waterfall move on to the next network rather than surfacing an adapter fault.
             return make(MAAdapterError.noFill, from: error)
         case VelocityAdsErrorCode.internalError:
             return make(MAAdapterError.internalError, from: error)
