@@ -6,7 +6,7 @@
 /// `VelocityAdsMaxAdapter.podspec` derives its `:tag` from `s.version` the same
 /// way. When releasing, bump this constant and the podspec `s.version` together,
 /// then tag with the 3-segment prefix.
-internal let velocityAdsMaxAdapterVersion = "0.10.0.0"
+internal let velocityAdsMaxAdapterVersion = "0.10.1.0"
 
 /// Mediation name reported to the Velocity SDK via `VelocityAdsMediationBridge`.
 /// Owned by this adapter — the SDK accepts any lowercase canonical string.
