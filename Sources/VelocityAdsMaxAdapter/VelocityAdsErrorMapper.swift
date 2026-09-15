@@ -42,15 +42,14 @@ enum VelocityAdsErrorMapper {
             return make(MAAdapterError.badRequest, from: error)
         case VelocityAdsErrorCode.noFill:
             return make(MAAdapterError.noFill, from: error)
-        case VelocityAdsErrorCode.mediaUnreachable:
-            // The ad media cannot be fetched on this device and network; `noFill` lets
-            // the waterfall move on rather than surfacing an adapter fault.
-            return make(MAAdapterError.noFill, from: error)
         case VelocityAdsErrorCode.internalError:
             return make(MAAdapterError.internalError, from: error)
         case VelocityAdsErrorCode.adAlreadyLoaded:
             return make(MAAdapterError.invalidLoadState, from: error)
         case VelocityAdsErrorCode.waterfallLoadFailed:
+            // The auction filled but the winning creative could not be loaded (media
+            // unreachable, unparseable payload, …). The Velocity SDK names the reason in
+            // `message`; MAX has no finer category, so this stays a flat `internalError`.
             return make(MAAdapterError.internalError, from: error)
         case VelocityAdsErrorCode.adDestroyed:
             return make(MAAdapterError.invalidLoadState, from: error)
