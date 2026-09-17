@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'VelocityAdsMaxAdapter'
-  s.version          = '0.10.0.0'
+  s.version          = '0.10.1.0'
   s.summary          = 'AppLovin MAX custom-network adapter for the Velocity Ads iOS SDK.'
   s.description      = <<-DESC
     VelocityAdsMaxAdapter bridges the Velocity Ads iOS SDK into the AppLovin MAX
@@ -27,5 +27,5 @@ Pod::Spec.new do |s|
   s.source_files     = 'Sources/VelocityAdsMaxAdapter/**/*.swift'
 
   s.dependency 'AppLovinSDK', '>= 13.0.0', '< 14.0.0'
-  s.dependency 'VelocityAdsSDK', '~> 0.10.0'
+  s.dependency 'VelocityAdsSDK', '~> 0.10.1'
 end

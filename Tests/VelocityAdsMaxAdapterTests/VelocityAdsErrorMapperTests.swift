@@ -68,6 +68,21 @@ final class VelocityAdsErrorMapperTests: XCTestCase {
         }
     }
 
+    func test_map_waterfallLoadFailed_isFlatInternalError_regardlessOfMessage() {
+        // Given — the SDK names the reason in the message only; the adapter must not parse it
+        let error = VelocityAdsError(code: VelocityAdsErrorCode.waterfallLoadFailed,
+                                     message: "Winning network failed to load its creative (some reason): adapter detail")
+
+        // When
+        let mapped = VelocityAdsErrorMapper.map(error)
+
+        // Then
+        XCTAssertEqual(mapped.code, MAAdapterError.internalError.code)
+        XCTAssertNotEqual(mapped.code, MAAdapterError.noFill.code, "A failed winning creative is a load failure, never a no-fill")
+        XCTAssertEqual(mapped.mediatedNetworkErrorCode, VelocityAdsErrorCode.waterfallLoadFailed)
+        XCTAssertEqual(mapped.mediatedNetworkErrorMessage, error.message, "The reason stays visible through the message")
+    }
+
     func test_map_unknownCode_fallsBackToUnspecified() {
         // Given — a code no VelocityAdsErrorCode constant defines
         let unknownCode = 99_999
