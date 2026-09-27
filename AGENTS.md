@@ -38,7 +38,7 @@ This package is the official AppLovin MAX **custom-network adapter** that bridge
 - **Repository**: `velocityads-ios-max-adapter` (public)
 - **Distribution**: CocoaPods trunk (`VelocityAdsMaxAdapter`) + Swift Package Manager (git tag)
 - **Version scheme**: 4-segment podspec version (`<sdkMajor>.<sdkMinor>.<sdkPatch>.<adapterBuild>`); two git tags per release — the **4-segment tag** (e.g. `0.10.0.0`) for CocoaPods and a **encoded SPM tag** (e.g. `100000.0.0`) for Swift Package Manager (SPM only accepts 3-segment semver; encoding: zero-pad each segment to 2 digits and concatenate)
-- **Minimum iOS**: 13.0
+- **Minimum iOS**: 15.0
 - **Supported MAX SDK**: 13.x
 
 ---

@@ -14,7 +14,7 @@ AppLovin MAX custom-network adapter that wraps the **Velocity Ads iOS SDK** (`Ve
 
 | Dependency | Minimum version |
 |---|---|
-| iOS | 13.0 |
+| iOS | 15.0 |
 | Swift | 5.9 |
 | AppLovin MAX SDK | 13.0.0 |
 | VelocityAdsSDK | 0.10.1 |
