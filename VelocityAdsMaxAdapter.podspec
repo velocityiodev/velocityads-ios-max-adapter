@@ -27,5 +27,5 @@ Pod::Spec.new do |s|
   s.source_files     = 'Sources/VelocityAdsMaxAdapter/**/*.swift'
 
   s.dependency 'AppLovinSDK', '>= 13.0.0', '< 14.0.0'
-  s.dependency 'VelocityAdsSDK', '~> 0.10.1'
+  s.dependency 'VelocityAdsSDK', '~> 0.11.0'
 end

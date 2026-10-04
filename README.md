@@ -17,7 +17,7 @@ AppLovin MAX custom-network adapter that wraps the **Velocity Ads iOS SDK** (`Ve
 | iOS | 15.0 |
 | Swift | 5.9 |
 | AppLovin MAX SDK | 13.0.0 |
-| VelocityAdsSDK | 0.10.1 |
+| VelocityAdsSDK | 0.11.0 |
 
 ## Installation
 
@@ -27,8 +27,8 @@ Add both the adapter and its dependencies to your `Podfile`:
 
 ```ruby
 pod 'AppLovinSDK',           '>= 13.0.0', '< 14.0.0'
-pod 'VelocityAdsSDK',        '~> 0.10.1'
-pod 'VelocityAdsMaxAdapter', '0.10.1.0'
+pod 'VelocityAdsSDK',        '~> 0.11.0'
+pod 'VelocityAdsMaxAdapter', '0.11.0.0'
 ```
 
 Then run:
@@ -44,6 +44,7 @@ Tags are therefore **encoded** as integers: each segment is zero-padded to 2 dig
 
 | Adapter version | Encoded SPM tag |
 |---|---|
+| `0.11.0.0` | `110000.0.0` |
 | `0.10.0.0` | `100000.0.0` |
 | `0.10.0.1` | `100001.0.0` |
 | `0.10.1.0` | `100100.0.0` |
