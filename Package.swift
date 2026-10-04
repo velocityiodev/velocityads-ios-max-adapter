@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "VelocityAdsMaxAdapter",
     platforms: [
-        .iOS(.v13)
+        .iOS(.v15)
     ],
     products: [
         .library(
@@ -22,7 +22,7 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/velocityiodev/velocityads-ios-sdk",
-            .upToNextMinor(from: "0.10.1")
+            .upToNextMinor(from: "0.11.0")
         )
     ],
     targets: [
