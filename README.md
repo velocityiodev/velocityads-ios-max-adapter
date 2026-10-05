@@ -17,7 +17,7 @@ AppLovin MAX custom-network adapter that wraps the **Velocity Ads iOS SDK** (`Ve
 | iOS | 15.0 |
 | Swift | 5.9 |
 | AppLovin MAX SDK | 13.0.0 |
-| VelocityAdsSDK | 0.11.0 |
+| VelocityAdsSDK | 0.12.0 |
 
 ## Installation
 
@@ -27,8 +27,8 @@ Add both the adapter and its dependencies to your `Podfile`:
 
 ```ruby
 pod 'AppLovinSDK',           '>= 13.0.0', '< 14.0.0'
-pod 'VelocityAdsSDK',        '~> 0.11.0'
-pod 'VelocityAdsMaxAdapter', '0.11.0.0'
+pod 'VelocityAdsSDK',        '~> 0.12.0'
+pod 'VelocityAdsMaxAdapter', '0.12.0.0'
 ```
 
 Then run:
@@ -44,11 +44,7 @@ Tags are therefore **encoded** as integers: each segment is zero-padded to 2 dig
 
 | Adapter version | Encoded SPM tag |
 |---|---|
-| `0.11.0.0` | `110000.0.0` |
-| `0.10.0.0` | `100000.0.0` |
-| `0.10.0.1` | `100001.0.0` |
-| `0.10.1.0` | `100100.0.0` |
-| `1.0.0.0`  | `1000000.0.0` |
+| `0.12.0.0` | `120000.0.0` |
 
 Formula: `A` `BB` `CC` `DD` (each segment 2 digits, leading zeros on the whole number stripped) → `N.0.0`.
 
@@ -59,7 +55,7 @@ Formula: `A` `BB` `CC` `DD` (each segment 2 digits, leading zeros on the whole n
    https://github.com/velocityiodev/velocityads-ios-max-adapter
    ```
 
-3. Set the Dependency Rule to **Exact Version** and enter the encoded tag from the [Releases](https://github.com/velocityiodev/velocityads-ios-max-adapter/releases) page (e.g. `100100.0.0` for adapter `0.10.1.0`).
+3. Set the Dependency Rule to **Exact Version** and enter the encoded tag from the [Releases](https://github.com/velocityiodev/velocityads-ios-max-adapter/releases) page (e.g. `120000.0.0` for adapter `0.12.0.0`).
 4. Add `VelocityAdsMaxAdapter` to your app target.
 
 The adapter declares its own SPM dependencies on `AppLovinSDK` and `VelocityAdsSDK`, so they are pulled in automatically.

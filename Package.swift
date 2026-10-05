@@ -22,7 +22,7 @@ let package = Package(
         ),
         .package(
             url: "https://github.com/velocityiodev/velocityads-ios-sdk",
-            .upToNextMinor(from: "0.11.0")
+            .upToNextMinor(from: "0.12.0")
         )
     ],
     targets: [
