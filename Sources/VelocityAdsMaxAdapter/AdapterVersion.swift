@@ -7,7 +7,7 @@
 /// Package Manager, which only accepts semver: each segment zero-padded to two
 /// digits and concatenated (`0.10.1.0` → `00100100` → `100100.0.0`). When
 /// releasing, bump this constant and the podspec `s.version` together.
-internal let velocityAdsMaxAdapterVersion = "0.11.0.0"
+internal let velocityAdsMaxAdapterVersion = "0.12.0.0"
 
 /// Mediation name reported to the Velocity SDK via `VelocityAdsMediationBridge`.
 /// Owned by this adapter — the SDK accepts any lowercase canonical string.
